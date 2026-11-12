@@ -136,6 +136,9 @@ button:focus-visible,input:focus-visible,.slab:focus-visible{outline:3px solid v
 .bal{flex:1;display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--muted)}
 .bal div{display:flex;justify-content:space-between}
 input[type=range]{width:100%;accent-color:var(--song);height:28px}
+.fx{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:var(--ink-2);border-radius:99px;padding:4px}
+.fx button{min-height:44px;border-radius:99px;font-size:15px;font-weight:700;color:var(--muted)}
+.fx button[aria-pressed=true]{background:var(--song);color:var(--ink)}
 .actions{display:grid;gap:10px;margin-top:4px}
 .note{font-size:14px;line-height:1.45;color:var(--muted);background:var(--ink-2);border-radius:16px;padding:12px 14px;display:none}
 .note.on{display:block}
@@ -240,6 +243,11 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
       <input type="range" id="bal" min="0" max="100" value="60">
       <div><span>More music</span><span>More you</span></div>
     </div>
+  </div>
+  <div class="fx" role="group" aria-label="How your voice sounds">
+    <button data-fx="natural" aria-pressed="false">Natural</button>
+    <button data-fx="studio" aria-pressed="true">Studio</button>
+    <button data-fx="hall" aria-pressed="false">Concert hall</button>
   </div>
   <p class="note" id="demoNote">Preview mode: this page can't use the mic here, so you're hearing a simulated singer. Open the hosted version of the prototype to record your own voice.</p>
   <div class="actions">
@@ -755,25 +763,51 @@ function stopMix(){
   try{mix.b.stop();mix.v.stop();}catch(e){}
   mix=null;setPlayIcon(false);if(last)drawGraph(null);
 }
+// One-tap voice sounds. Each preset sets filter gains and effect sends on one shared chain,
+// so switching while it plays is instant.
+const FX={
+  natural:{hp:60,low:0,pres:0,air:0,thr:0,short:0,long:0,echo:0},
+  studio:{hp:110,low:-2,pres:4,air:3,thr:-24,short:.2,long:0,echo:0},
+  hall:{hp:120,low:-3,pres:2,air:2,thr:-22,short:.05,long:.5,echo:.16}
+};
+let fxName='studio',IR=null;
+function impulseLen(sec,decay){const sr=ctx.sampleRate,len=Math.floor(sr*sec),b=ctx.createBuffer(2,len,sr);for(let c=0;c<2;c++){const d=b.getChannelData(c);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,decay);}return b;}
+function applyFx(m,instant){
+  const f=FX[fxName],now=ctx.currentTime,set=(p,v)=>instant?p.setValueAtTime(v,now):p.setTargetAtTime(v,now,.04);
+  set(m.hp.frequency,f.hp);set(m.low.gain,f.low);set(m.pres.gain,f.pres);set(m.air.gain,f.air);
+  set(m.comp.threshold,f.thr);set(m.comp.ratio,f.thr?4:1);
+  set(m.sShort.gain,f.short);set(m.sLong.gain,f.long);set(m.sEcho.gain,f.echo);
+}
 function playMix(){
   ensureCtx();stopMix();
   const {song,voice}=last;
+  if(!IR)IR={short:impulseLen(1.2,3),long:impulseLen(3.2,2.2)};
   const vb=ctx.createBuffer(1,voice.length,ctx.sampleRate);vb.copyToChannel?vb.copyToChannel(voice,0):vb.getChannelData(0).set(voice);
-  const b=ctx.createBufferSource();b.buffer=cache[song.id+'_back']||tracks.back;
+  const b=ctx.createBufferSource();b.buffer=tracks.back;
   const v=ctx.createBufferSource();v.buffer=vb;
   const gb=ctx.createGain(),gv=ctx.createGain(),{music,voice:vg}=balGains();gb.gain.value=music;gv.gain.value=vg;
-  const comp=ctx.createDynamicsCompressor();comp.threshold.value=-24;comp.ratio.value=4;
-  const hp=ctx.createBiquadFilter();hp.type='highpass';hp.frequency.value=90;
-  const rev=ctx.createConvolver();rev.buffer=impulse();const send=ctx.createGain();send.gain.value=.22;
+  const bq=(type,f,q)=>{const n=ctx.createBiquadFilter();n.type=type;n.frequency.value=f;if(q)n.Q.value=q;return n;};
+  const hp=bq('highpass',90),low=bq('lowshelf',250),pres=bq('peaking',3200,.9),air=bq('highshelf',10000);
+  const comp=ctx.createDynamicsCompressor();comp.knee.value=12;
+  const rvS=ctx.createConvolver();rvS.buffer=IR.short;const rvL=ctx.createConvolver();rvL.buffer=IR.long;
+  const sShort=ctx.createGain(),sLong=ctx.createGain(),sEcho=ctx.createGain();
+  const dl=ctx.createDelay(1);dl.delayTime.value=.28;const fb=ctx.createGain();fb.gain.value=.3;
   b.connect(gb);gb.connect(ctx.destination);
-  v.connect(hp);hp.connect(comp);comp.connect(gv);gv.connect(ctx.destination);gv.connect(send);send.connect(rev);rev.connect(ctx.destination);
+  v.connect(hp);hp.connect(low);low.connect(pres);pres.connect(air);air.connect(comp);comp.connect(gv);gv.connect(ctx.destination);
+  gv.connect(sShort);sShort.connect(rvS);rvS.connect(ctx.destination);
+  gv.connect(sLong);sLong.connect(rvL);rvL.connect(ctx.destination);
+  gv.connect(sEcho);sEcho.connect(dl);dl.connect(fb);fb.connect(dl);dl.connect(ctx.destination);
   const off=Math.max(0,song.notes[0].t-song.spb*1.5),at=ctx.currentTime+.08;
   b.start(at,off);v.start(at,off);
-  mix={b,v,gb,gv,at,off,song};setPlayIcon(true);
+  mix={b,v,gb,gv,at,off,song,hp,low,pres,air,comp,sShort,sLong,sEcho};applyFx(mix,true);setPlayIcon(true);
   b.onended=()=>{if(mix&&mix.b===b)stopMix();};
   const tick=()=>{if(!mix||mix.b!==b)return;const t=ctx.currentTime-(ctx.outputLatency||0)-at+off;drawGraph(t);if(t>song.lastEnd+.8){stopMix();return;}requestAnimationFrame(tick);};
   requestAnimationFrame(tick);
 }
+document.querySelectorAll('.fx button').forEach(bt=>bt.onclick=()=>{
+  fxName=bt.dataset.fx;document.querySelectorAll('.fx button').forEach(x=>x.setAttribute('aria-pressed',x===bt));
+  if(mix)applyFx(mix,false);else playMix();
+});
 $('play').onclick=()=>mix?stopMix():playMix();
 $('bal').oninput=()=>{if(!mix)return;const {music,voice}=balGains();mix.gb.gain.setTargetAtTime(music,ctx.currentTime,.05);mix.gv.gain.setTargetAtTime(voice,ctx.currentTime,.05);};
 $('again').onclick=async()=>{stopMix();ensureCtx();current=last.song;tracks=await cache[current.id];startSong();};
