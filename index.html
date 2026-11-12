@@ -52,7 +52,9 @@ button:focus-visible,input:focus-visible,.slab:focus-visible{outline:3px solid v
 .pick-head{display:flex;align-items:center;gap:6px;margin-bottom:6px}
 .pick-head .icon{margin-left:-8px}
 .pick-head h2{font-size:30px;font-weight:800;letter-spacing:-.03em;flex:1}
-.pick-head span{font-size:15px;font-weight:600;opacity:.7;font-variant-numeric:tabular-nums}
+.seg{display:flex;gap:4px;align-self:flex-start;width:auto!important;margin:0 0 4px!important;background:rgba(29,22,49,.1);border-radius:99px;padding:4px}
+.seg button{padding:8px 14px;border-radius:99px;font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}
+.seg button[aria-pressed=true]{background:var(--ink);color:var(--paper)}
 .wheel-wrap{flex:1;position:relative;min-height:0}
 .band{position:absolute;left:-10px;right:-10px;top:50%;height:104px;transform:translateY(-50%);border-radius:26px;background:rgba(29,22,49,.1);pointer-events:none}
 .wheel{position:absolute;inset:0;overflow-y:scroll;scroll-snap-type:y mandatory;perspective:700px;scrollbar-width:none;-webkit-mask-image:linear-gradient(transparent,#000 22%,#000 78%,transparent);mask-image:linear-gradient(transparent,#000 22%,#000 78%,transparent);outline:none}
@@ -164,8 +166,11 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
   <header class="pick-head">
     <button class="icon" id="pickBack" aria-label="Back to start">&#8592;</button>
     <h2>Pick a song</h2>
-    <span id="pickCount"></span>
   </header>
+  <div class="seg" role="group" aria-label="Filter songs">
+    <button id="fReady" data-f="ready" aria-pressed="true">Ready to sing</button>
+    <button id="fAll" data-f="all" aria-pressed="false">All</button>
+  </div>
   <div class="wheel-wrap">
     <div class="band" aria-hidden="true"></div>
     <div class="wheel" id="wheel" tabindex="0" role="listbox" aria-label="Songs. Use the arrow keys to move."></div>
@@ -426,18 +431,22 @@ function detectPitch(buf,sr){
   });
   return frames;
 }
+// Pitch is compared by note name, so any octave counts. A singer who picks their own key
+// (everything shifted by the same interval) is scored against the melody moved into that key.
+const fold=d=>((d+6)%12+12)%12-6;
 function scoreIt(song,frames){
-  let inNote=0,voiced=0,hit=0;const pts=[];
+  let inNote=0;const vs=[];
   for(const f of frames){
     const n=song.notes.find(n=>f.t>=n.t+.06&&f.t<n.t+n.d);
     if(!n)continue;
     inNote++;
-    if(f.m==null)continue;
-    let diff=f.m-n.midi;diff=((diff+6)%12+12)%12-6;
-    const ok=Math.abs(diff)<=.9;voiced++;if(ok)hit++;
-    pts.push({t:f.t,m:n.midi+diff,ok});
+    if(f.m!=null)vs.push({t:f.t,n,diff:fold(f.m-n.midi)});
   }
-  return {acc:voiced?hit/voiced:0,cover:inNote?voiced/inNote:0,pts};
+  const hitsAt=k=>vs.reduce((a,v)=>a+(Math.abs(fold(v.diff-k))<=.9),0);
+  let key=0,best=hitsAt(0);
+  for(let k=-6;k<6;k++){if(!k)continue;const h=hitsAt(k);if(h>best*1.15+2){best=h;key=k;}}
+  const pts=vs.map(v=>{const d=fold(v.diff-key);return {t:v.t,m:v.n.midi+d,ok:Math.abs(d)<=.9};});
+  return {acc:vs.length?best/vs.length:0,cover:inNote?vs.length/inNote:0,pts,key};
 }
 function fakeVoice(song,sr){
   const len=Math.ceil(song.dur*sr),v=new Float32Array(len);let ph=0;
@@ -503,11 +512,21 @@ const CATALOG=[];
 const LOCK='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 9h-1V7a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2zm-7-2a2 2 0 1 1 4 0v2h-4V7z"/></svg>';
 const MICI='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a4 4 0 0 0 4-4V6a4 4 0 1 0-8 0v5a4 4 0 0 0 4 4z"/></svg>';
 const wheel=$('wheel'),IH=92;
-wheel.innerHTML='<div class="pad"></div>'+CATALOG.map((c,i)=>`<button class="w-item" role="option" data-i="${i}" tabindex="-1"><span class="w-title">${esc(c.title)}</span><span class="w-artist">${c.song?MICI:LOCK}${esc(c.artist)}${c.song?' • '+fmtLen(c.song.lastEnd-c.song.lead):''}</span></button>`).join('')+'<div class="pad"></div>';
-const items=[...wheel.querySelectorAll('.w-item')];
-$('pickCount').textContent=`${CATALOG.filter(c=>c.song).length} of ${CATALOG.length} ready`;
 const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
-let focusIdx=-1,wheelRaf=0;
+let focusIdx=-1,wheelRaf=0,VIEW=[],items=[],filter='ready';
+$('fReady').textContent=`Ready to sing (${CATALOG.filter(c=>c.song).length})`;
+$('fAll').textContent=`All ${CATALOG.length}`;
+function renderWheel(keep){
+  VIEW=filter==='ready'?CATALOG.filter(c=>c.song):CATALOG;
+  wheel.innerHTML='<div class="pad"></div>'+VIEW.map((c,i)=>`<button class="w-item" role="option" data-i="${i}" tabindex="-1"><span class="w-title">${esc(c.title)}</span><span class="w-artist">${c.song?MICI:LOCK}${esc(c.artist)}${c.song?' • '+fmtLen(c.song.lastEnd-c.song.lead):''}</span></button>`).join('')+'<div class="pad"></div>';
+  items=[...wheel.querySelectorAll('.w-item')];focusIdx=-1;
+  const i=Math.max(0,VIEW.indexOf(keep));scrollToIdx(i,false);paintWheel();
+}
+document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{
+  if(b.dataset.f===filter)return;const keep=VIEW[focusIdx];filter=b.dataset.f;
+  document.querySelectorAll('.seg button').forEach(x=>x.setAttribute('aria-pressed',x===b));
+  renderWheel(keep);
+});
 function paintWheel(){
   wheelRaf=0;
   const mid=wheel.scrollTop+wheel.clientHeight/2;
@@ -516,9 +535,9 @@ function paintWheel(){
     el.style.opacity=Math.max(.12,1-a*.3).toFixed(3);
     el.style.transform=reduceMotion?'':`rotateX(${(-d*17).toFixed(2)}deg) scale(${(1-a*.08).toFixed(3)})`;
   });
-  const idx=Math.max(0,Math.min(CATALOG.length-1,Math.round((mid-items[0].offsetTop-IH/2)/IH)));
+  const idx=Math.max(0,Math.min(VIEW.length-1,Math.round((mid-items[0].offsetTop-IH/2)/IH)));
   if(idx!==focusIdx){
-    focusIdx=idx;const c=CATALOG[idx];
+    focusIdx=idx;const c=VIEW[idx];
     $('pick').style.setProperty('--focus',c.color);
     items.forEach((el,i)=>el.setAttribute('aria-selected',i===idx));
     $('pickStatus').textContent=c.song?c.song.vibe:'Needs a music license before you can sing it';
@@ -531,10 +550,10 @@ wheel.addEventListener('scroll',scheduleWheel,{passive:true});
 window.addEventListener('resize',scheduleWheel);
 function scrollToIdx(i,smooth){const el=items[i];wheel.scrollTo({top:el.offsetTop+IH/2-wheel.clientHeight/2,behavior:smooth&&!reduceMotion?'smooth':'auto'});}
 wheel.onclick=e=>{const b=e.target.closest('.w-item');if(!b)return;const i=+b.dataset.i;if(i!==focusIdx)scrollToIdx(i,true);else choose();};
-wheel.onkeydown=e=>{if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();scrollToIdx(Math.max(0,Math.min(CATALOG.length-1,focusIdx+(e.key==='ArrowDown'?1:-1))),true);}else if(e.key==='Enter')choose();};
-function choose(){const c=CATALOG[focusIdx];if(c&&c.song)openSheet(c.song);}
+wheel.onkeydown=e=>{if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();scrollToIdx(Math.max(0,Math.min(VIEW.length-1,focusIdx+(e.key==='ArrowDown'?1:-1))),true);}else if(e.key==='Enter')choose();};
+function choose(){const c=VIEW[focusIdx];if(c&&c.song)openSheet(c.song);}
 $('pickGo').onclick=choose;
-$('go').onclick=()=>{ensureCtx();show('pick');if(focusIdx<0){scrollToIdx(CATALOG.findIndex(c=>c.song&&c.song.id==='jingle'),false);}paintWheel();};
+$('go').onclick=()=>{ensureCtx();show('pick');if(focusIdx<0)renderWheel(CATALOG.find(c=>c.song&&c.song.id==='jingle'));else paintWheel();};
 $('pickBack').onclick=()=>show('home');
 async function openSheet(song){
   ensureCtx();current=song;
@@ -566,8 +585,12 @@ function startSong(){
   const hear=!demo&&monitor&&$('monitor').checked;
   if(monitor)monitor.gain.setTargetAtTime(hear?.9:0,ctx.currentTime,.05);
   if(!demo)$('micLabel').textContent=hear?'Mic on. You can hear yourself.':'Mic on. Sing out.';
-  run={song,startAt,back,gd,chunks:[],recT:null,rec:!demo,idx:-1,spans:[],trail:[],abuf:new Float32Array(2048),lastM:null,sm:null};
+  run={song,startAt,back,gd,chunks:[],recT:null,rec:!demo,idx:-1,spans:[],trail:[],abuf:new Float32Array(2048),lastM:null,sm:null,diffs:[],key:0};
   requestAnimationFrame(loop);
+}
+function keyNote(k){
+  if(demo)return;
+  $('micLabel').textContent=k?`Matched to your key (${Math.abs(k)} ${Math.abs(k)===1?'step':'steps'} ${k>0?'higher':'lower'})`:'Singing in the song’s key';
 }
 const noteAt=(song,t)=>song.notes.find(n=>t>=n.t&&t<n.t+n.d)||null;
 function livePitch(buf,sr){
@@ -642,7 +665,17 @@ function loop(){
   if(pm!=null){
     run.sm=run.sm==null||Math.abs(pm-run.sm)>1.5?pm:run.sm+(pm-run.sm)*.5;
     let mm=run.sm,ok=null;
-    if(cur){let diff=mm-cur.midi;diff=((diff+6)%12+12)%12-6;mm=cur.midi+diff;ok=Math.abs(diff)<=.9;}
+    if(cur){
+      const raw=fold(mm-cur.midi);
+      // learn the singer's key from the last ~2 seconds of sung notes
+      run.diffs.push(Math.round(raw));if(run.diffs.length>60)run.diffs.shift();
+      if(run.diffs.length>=24){
+        const cnt={};let bk=run.key,bc=0;for(const d of run.diffs){cnt[d]=(cnt[d]||0)+1;}
+        for(const k in cnt)if(cnt[k]>bc){bc=cnt[k];bk=+k;}
+        if(bk!==run.key&&bc>=run.diffs.length*.5){run.key=bk;keyNote(bk);}
+      }
+      const d=fold(raw-run.key);mm=cur.midi+d;ok=Math.abs(d)<=.9;
+    }
     else{const ref=run.lastM??(song.minM+song.maxM)/2;while(mm-ref>6)mm-=12;while(ref-mm>6)mm+=12;}
     run.trail.push({t,m:mm,ok});run.lastM=mm;
   }else{run.sm=null;run.trail.push({t,m:null,ok:null});}
@@ -681,7 +714,8 @@ function verdictFor(sc){
   if(sc.cover<.15)return ['We couldn’t hear you','Check that the mic is allowed, then sing out a little louder.'];
   const c=sc.acc*Math.min(1,sc.cover/.6);
   const v=c>=.85?'Studio ready':c>=.7?'The crowd’s on its feet':c>=.5?'Warming up nicely':c>=.3?'Brave and loud':'A shower-stage debut';
-  return [v,`You sang through ${Math.round(sc.cover*100)}% of the song. The graph shows where you matched the melody.`];
+  const k=sc.key?` Scored in your own key, ${Math.abs(sc.key)} ${Math.abs(sc.key)===1?'step':'steps'} ${sc.key>0?'above':'below'} the original.`:'';
+  return [v,`You sang through ${Math.round(sc.cover*100)}% of the song.${k}`];
 }
 function showResults(){
   const {song,sc}=last;
