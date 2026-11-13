@@ -222,7 +222,7 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
 .coach-btn{align-self:flex-start;font-size:17px;font-weight:700;color:var(--paper);padding:12px 18px;border-radius:99px;box-shadow:inset 0 0 0 1.5px rgba(251,249,255,.3)}
 .coach-btn[aria-expanded=true]{display:none}
 .coach{display:flex;flex-direction:column;gap:16px}
-.coach-hide{align-self:center;color:var(--muted)}
+.coach-hide{align-self:center;color:var(--paper);font-size:16px;font-weight:700;padding:12px 18px;border-radius:99px;box-shadow:inset 0 0 0 1.5px rgba(251,249,255,.3)}
 .cards{display:grid;gap:10px}
 .card{position:relative;border-radius:22px;padding:16px 16px 14px 18px;background:var(--ink-2);display:grid;gap:6px}
 .card:nth-child(1){transform:rotate(-.8deg)}.card:nth-child(2){transform:rotate(.6deg)}.card:nth-child(3){transform:rotate(-.4deg)}
@@ -230,7 +230,7 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
 .card-line{font-size:21px;font-weight:800;letter-spacing:-.02em;line-height:1.15;text-wrap:balance}
 .card-sub{font-size:15px;color:var(--muted);line-height:1.35}
 .card-hear{justify-self:start;font-size:15px;font-weight:700;color:var(--c);padding:6px 0 0}
-.actions{display:grid;gap:10px;margin-top:4px}
+.actions{display:grid;gap:10px;margin-top:auto;padding-top:24px}
 .note{font-size:14px;line-height:1.45;color:var(--muted);background:var(--ink-2);border-radius:16px;padding:12px 14px;display:none}
 .note.on{display:block}
 
@@ -406,7 +406,7 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
       <canvas id="graph" aria-label="Your pitch compared with the melody"></canvas>
       <div class="legend"><span><i class="k1"></i><span id="legendRef">Melody</span></span><span><i class="k2"></i>On pitch</span><span><i class="k3"></i>Off pitch</span></div>
     </div>
-    <button class="text-btn coach-hide" id="coachHide">Keep it just for fun next time</button>
+    <button class="coach-hide" id="coachHide" aria-controls="coach">Hide breakdown</button>
   </div>
   <p class="note" id="demoNote">Preview mode: this page can’t use the mic here, so you’re hearing a pretend singer. Open Belt in your browser to record your own voice.</p>
   <div class="actions">
@@ -1253,7 +1253,7 @@ function setCoach(open,remember){
   renderCards();drawGraph(null);
 }
 $('coachBtn').onclick=()=>{setCoach(true);$('coach').scrollIntoView({behavior:'smooth',block:'start'});};
-$('coachHide').onclick=()=>{setCoach(false);toast('Got it. Just for fun from now on.');};
+$('coachHide').onclick=()=>{setCoach(false);$('coachBtn').focus();$('result').scrollTo({top:0,behavior:reduceMotion?'auto':'smooth'});};
 
 /* Notes from the booth: one thing you did well, one thing to try, one fun fact. Each can replay its moment. */
 const NAMES=['C','C\u266f','D','E\u266d','E','F','F\u266f','G','A\u266d','A','B\u266d','B'];
@@ -1914,7 +1914,7 @@ function ownFail(i,msg,e){
 function setupError(e){
   const m=String(e&&e.message||e||'');
   if(/credit|balance|insufficient|payment|billing/i.test(m))return 'Your Replicate account needs billing set up. Add a payment method at replicate.com, then try again.';
-  if(/REPLICATE_API_TOKEN|unauthenticated|invalid token/i.test(m))return 'The Replicate token is missing or wrong. Check the function secrets in Supabase.';
+  if(/REPLICATE_API_TOKEN|unauthenticated|invalid token|authentication token|authentication credentials/i.test(m))return 'The Replicate token is missing or wrong. Check the function secrets in Supabase.';
   if(/sign in/i.test(m))return 'Sign in, then add your song again.';
   if(/not set in the function secrets/i.test(m))return 'A key is missing in Supabase. Check the function secrets.';
   if(/unknown action/i.test(m))return 'The Belt server function needs updating. Redeploy belt-ai in Supabase.';
@@ -1989,7 +1989,8 @@ $('ownGo').onclick=async()=>{
 /* Smart setup through the belt-ai server function (keys live there, never in the app) */
 const aiOn=()=>!!(sb&&user);
 async function fnError(error){let m=error&&error.message||'Request failed';try{const r=error.context;if(r&&r.json){const b=await r.clone().json();m=b.error||b.message||b.msg||m;if(r.status)m+=` (${r.status})`;}}catch(e){try{const t=await error.context.text();if(t)m=t.slice(0,200);}catch(e2){}}return new Error(m);}
-async function ai(action,payload){const {data,error}=await sb.functions.invoke('belt-ai',{body:{action,...payload}});if(error)throw await fnError(error);if(data&&data.error)throw new Error(data.error);return data;}
+async function ai(action,payload,retried){const {data,error}=await sb.functions.invoke('belt-ai',{body:{action,...payload}});
+  if(error){const st=error.context&&error.context.status;if(st===401&&!retried){try{await sb.auth.refreshSession();}catch(e){}return ai(action,payload,true);}throw await fnError(error);}if(data&&data.error)throw new Error(data.error);return data;}
 const b64=blob=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result).split(',')[1]);r.onerror=rej;r.readAsDataURL(blob);});
 function clipWav(buf,t0,dur){const x=monoOf(buf),sr=buf.sampleRate,a=Math.max(0,Math.floor(t0*sr));return toWav(x.subarray(a,Math.min(x.length,a+Math.floor(dur*sr))),sr,16000);}
 async function aiJudge(backBuf,vb,notes,guess){
