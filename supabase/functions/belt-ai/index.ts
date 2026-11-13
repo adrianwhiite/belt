@@ -117,10 +117,11 @@ async function askGemini(key: string, payload: unknown) {
       method: "POST",
       headers: { "x-goog-api-key": key, "Content-Type": "application/json" },
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(25000),
     });
     if (r.status === 404) { lastErr = await r.text(); continue; }
     const j = await r.json();
-    if (!r.ok) throw new Error(j?.error?.message || `Gemini error ${r.status}`);
+    if (!r.ok) throw new Error(`Gemini ${r.status} (${m}): ${j?.error?.message || "no details"}`);
     const text = (j.candidates?.[0]?.content?.parts || []).map((p: { text?: string }) => p.text || "").join("") || "{}";
     return { model: m, ...JSON.parse(text) };
   }
@@ -169,12 +170,17 @@ async function fetchOutput({ id, model }: { id: string; model: string }) {
   const p = await rp(`/predictions/${encodeURIComponent(id)}`);
   const out = p.output || {};
   const key = model === "instrumental" ? ["no_vocals", "no_stem", "accompaniment", "instrumental"].find((k) => out[k]) : model;
-  const link = key && out[key];
+  // a part can come back as a plain link, a list with one link, or an object holding the link
+  const pick = (v: unknown): string | undefined =>
+    typeof v === "string" ? v : Array.isArray(v) ? pick(v[0]) : v && typeof v === "object" ? pick((v as Record<string, unknown>).url ?? (v as Record<string, unknown>).uri ?? (v as Record<string, unknown>).href) : undefined;
+  const link = key ? pick(out[key]) : undefined;
+  console.log("fetch_output", model, "->", key, typeof out[key as string], link ? new URL(link).hostname : "no link");
   if (!link) return json({ error: `No ${model} part`, parts: Object.keys(out).filter((k) => out[k]) }, 404);
   const host = new URL(link).hostname;
-  if (!/(^|\.)replicate\.(delivery|com)$/.test(host)) return json({ error: "Unexpected file host" }, 400);
-  const r = await fetch(link);
-  if (!r.ok || !r.body) return json({ error: `Couldn't download the ${model} part` }, 502);
+  if (!/(^|\.)replicate\.(delivery|com)$/.test(host)) return json({ error: `Unexpected file host ${host}` }, 400);
+  // newer Replicate file links on api.replicate.com need the token; replicate.delivery links are public
+  const r = await fetch(link, host.endsWith("replicate.com") ? { headers: { Authorization: `Bearer ${rpToken()}` } } : undefined);
+  if (!r.ok || !r.body) { console.error("download failed", r.status, host); return json({ error: `Couldn't download the ${model} part (${r.status})` }, 502); }
   return new Response(r.body, { headers: { ...CORS, "Content-Type": "application/octet-stream" } });
 }
 
