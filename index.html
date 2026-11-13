@@ -243,6 +243,11 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px so
 #sing.is-ready .ln,#sing.is-ready .breath,#sing.is-ready .lanebox,#sing.is-ready .prog,#sing.is-ready #left{visibility:hidden}
 #sing.is-ready .ln{display:none}
 /* stage lights: three soft beams sweep slowly behind everything */
+/* Music video: a looping band clip behind the lyrics, washed in the song's colour so the words stay easy to read */
+.bgvid{position:absolute;inset:0;width:100%!important;height:100%;max-width:none!important;margin:0!important;object-fit:cover;z-index:-2;pointer-events:none;
+  filter:grayscale(1) contrast(1.25) brightness(1.05);mix-blend-mode:overlay;opacity:0;transition:opacity 1.2s ease}
+#sing.video .bgvid{opacity:.62}
+#sing.video .lights{opacity:calc(var(--lights,.45)*.45)}
 .lights{position:absolute;inset:0;z-index:-1;pointer-events:none;overflow:hidden;opacity:var(--lights,.45);transition:opacity 2.5s ease;max-width:none!important}
 .lights i{transition:transform 1.25s cubic-bezier(.6,0,.15,1),opacity 1.25s ease;position:absolute;top:-14%;width:64vmax;height:150%;margin-left:-32vmax;transform-origin:50% 0;
   background:linear-gradient(180deg,rgba(255,255,255,.5),rgba(255,255,255,.16) 50%,rgba(255,255,255,0) 82%);
@@ -497,12 +502,14 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
   </div>
   <label class="tg" id="guideRow"><span id="guideText">Guide melody<small>Plays the tune softly</small></span><input type="checkbox" id="guide" role="switch" checked><i></i></label>
   <label class="tg"><span>Hear yourself<small>Headphones only, or the speaker will squeal</small></span><input type="checkbox" id="monitor" role="switch"><i></i></label>
+  <label class="tg"><span>Music video<small>A band plays behind the lyrics</small></span><input type="checkbox" id="video" role="switch"><i></i></label>
   <label class="tg"><span>Louder words get bolder<small>Belt it and the words thicken</small></span><input type="checkbox" id="bold" role="switch"><i></i></label>
   <button class="btn ink" id="start" disabled>Tuning up</button>
   <button class="text-btn" id="ownRemove" hidden>Remove this song from this device</button>
 </div>
 
 <section id="sing" class="screen" aria-label="Sing">
+  <video class="bgvid" id="bgvid" muted playsinline loop preload="none" aria-hidden="true" tabindex="-1" disablepictureinpicture></video>
   <div class="lights" aria-hidden="true"><i></i><i></i><i></i></div>
   <header class="sing-head">
     <button class="icon" id="quit" aria-label="Leave the stage">&#10005;</button>
@@ -1283,9 +1290,18 @@ $('start').onclick=async()=>{if(current&&current.own&&!current.notes.length){pic
 /* ---------- Sing ---------- */
 const rider=()=>$('rider')._b;
 // The song waits for you: lights up, one tap to start.
+// the music video: on unless you've switched it off (or asked your phone for less motion)
+const videoOn=()=>pref('video',reduceMotion?'0':'1')==='1';
+$('video').checked=videoOn();
+$('video').onchange=()=>setPref('video',$('video').checked?'1':'0');
+function backdrop(on){
+  const v=$('bgvid'),sg=$('sing');sg.classList.toggle('video',on);
+  if(on){if(!v.src){v.poster='/backdrops/band.jpg';v.src='/backdrops/band.mp4';}const p=v.play();if(p&&p.catch)p.catch(()=>sg.classList.remove('video'));}
+  else v.pause();
+}
 function readySong(){
   stopMix();run=null;
-  const song=current,sg=$('sing');
+  const song=current,sg=$('sing');backdrop(videoOn());
   $('singTitle').textContent=song.title;
   $('micLabel').textContent=demo?'The mic is off, so you’ll hear a pretend singer':'';
   ['lineNow','lnN1','lnN2','lnN3','lnN4'].forEach(id=>$(id).textContent='');$('breath').classList.remove('on');
@@ -1487,7 +1503,7 @@ function stopRun(){
   if(monitor)monitor.gain.setTargetAtTime(0,now,.05);
   for(const x of [run.back,run.gd].filter(Boolean)){x.g.gain.setTargetAtTime(0,now,.15);try{x.s.stop(now+.6);}catch(e){}}
 }
-function leaveStage(){stayAwake(false);releaseMic();clearTimeout($('sing')._t);$('sing').classList.remove('live','is-ready','clearing');$('sing').style.background='';show('pick');}
+function leaveStage(){stayAwake(false);releaseMic();backdrop(false);clearTimeout($('sing')._t);$('sing').classList.remove('live','is-ready','clearing');$('sing').style.background='';show('pick');}
 function openQuit(){$('scrim').classList.add('on');$('quitSheet').classList.add('on');$('qKeep').focus();}
 function closeQuit(){$('quitSheet').classList.remove('on');$('scrim').classList.remove('on');if(ctx&&ctx.state==='suspended')ctx.resume();}
 $('quit').onclick=()=>{
@@ -1518,7 +1534,7 @@ function voiceLag(voice,ref,sr){
 }
 function finish(){
   const r=run;r.rec=false;stopRun();run=null;clearTimeout($('sing')._t);$('sing').classList.remove('live','clearing');
-  stayAwake(false);releaseMic();
+  stayAwake(false);releaseMic();backdrop(false);
   $('busy').classList.add('on');
   setTimeout(()=>{
    try{
