@@ -275,6 +275,9 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
 .toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 24px);transform:translate(-50%,20px);background:var(--paper);color:var(--ink);font-weight:700;font-size:16px;padding:14px 20px;border-radius:99px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;box-shadow:0 8px 30px rgba(10,6,22,.35);max-width:calc(100% - 40px);text-align:center;z-index:5}
 .toast.on{opacity:1;transform:translate(-50%,0)}
 
+/* page wash: the next page grows out of the button you pressed */
+::view-transition-old(root),::view-transition-new(root){animation:none;mix-blend-mode:normal}
+
 @media (prefers-reduced-motion:reduce){
   #pick{transition:none}
   .ln.cur.in,.mini-eq i,.checks li::before,#sing.live .lights i{animation:none!important}
@@ -883,11 +886,23 @@ wheel.onkeydown=e=>{if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault(
 function choose(){const c=VIEW[focusIdx];if(c&&c.song)openSheet(c.song);}
 $('pickGo').onclick=choose;
 function openPicker(keep){ensureCtx();show('pick');renderChips();if(focusIdx<0||keep)renderWheel(keep||CATALOG.find(c=>c.song&&c.song.own)||CATALOG.find(c=>c.song&&c.song.id==='jingle'));else paintWheel();}
-$('go').onclick=()=>openPicker();
-$('pickBack').onclick=()=>{show('home');paintTonight();};
+// The next page washes over this one as a circle that grows out of whatever you tapped,
+// while the page underneath eases back and dims.
+function wash(el,update){
+  if(!document.startViewTransition||reduceMotion){update();return;}
+  const r=(el||document.body).getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2;
+  const R=Math.hypot(Math.max(x,innerWidth-x),Math.max(y,innerHeight-y)),r0=Math.min(r.height,r.width)/2;
+  const de=document.documentElement,vt=document.startViewTransition(update),ease='cubic-bezier(.22,1,.36,1)';
+  vt.ready.then(()=>{
+    de.animate({clipPath:[`circle(${r0}px at ${x}px ${y}px)`,`circle(${R}px at ${x}px ${y}px)`]},{duration:680,easing:ease,fill:'forwards',pseudoElement:'::view-transition-new(root)'});
+    de.animate({transform:['scale(1)','scale(.95)'],opacity:[1,.55]},{duration:680,easing:ease,fill:'forwards',pseudoElement:'::view-transition-old(root)'});
+  }).catch(()=>{});
+}
+$('go').onclick=e=>wash(e.currentTarget,()=>openPicker());
+$('pickBack').onclick=e=>wash(e.currentTarget,()=>{show('home');paintTonight();});
 function tonightSong(){const o=CATALOG.find(c=>c.song&&c.song.own);return o?o.song:SONG_BY_ID.jingle;}
 function paintTonight(){const s=tonightSong();$('tonightTitle').textContent=s.title;$('tonightDot').style.background=s.color;}
-$('tonight').onclick=()=>{const s=tonightSong();openPicker(CATALOG.find(c=>c.song===s));openSheet(s);};
+$('tonight').onclick=e=>{const s=tonightSong();wash(e.currentTarget,()=>openPicker(CATALOG.find(c=>c.song===s)));setTimeout(()=>openSheet(s),reduceMotion?0:420);};
 $('homeMe').onclick=()=>openMine();
 $('homeSignIn').onclick=()=>authFor('hello');
 function paintAuth(){const inn=!!user;$('homeMe').hidden=!inn;$('homeSignIn').hidden=inn||!sb;}
