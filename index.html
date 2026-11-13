@@ -1882,7 +1882,8 @@ function readMp4Tags(u){
   const t=find(0xA9,0x6E,0x61,0x6D),a=find(0xA9,0x41,0x52,0x54);if(t)out.TIT2=t;if(a)out.TPE1=a;return out;
 }
 function cleanName(s){
-  return String(s||'').replace(/\.[a-z0-9]{2,4}$/i,'').replace(/[_]+/g,' ')
+  return String(s||'').replace(/\s*[-–|]?\s*https?:\/\/\S+/gi,' ').replace(/\.[a-z0-9]{2,4}$/i,'').replace(/[_]+/g,' ').replace(/[♂♀★☆♪♫|]+/g,' - ')
+    .replace(/\((official|music|lyric)[^)]*\)|\[(official|music|lyric)[^\]]*\]/gi,' ').replace(/\b(official (music )?video|lyric video|hd|4k)\b/gi,' ')
     .replace(/\(([^)]*)\)|\[([^\]]*)\]/g,(m,a,b)=>JUNK_RX.test(a||b||'')?' ':m)
     .replace(/\b(karaoke version|karaoke|custom backing track|backing track|instrumental)\b/ig,' ')
     .replace(/\s*-\s*$/,'').replace(/\s{2,}/g,' ').trim();
@@ -1909,6 +1910,7 @@ function readTags(u){
 }
 function guessSong(tags,fileName){
   let title=cleanName(tags.TIT2),artist=JUNK_RX.test(tags.TPE1||'')?'':cleanName(tags.TPE1);
+  if(title&&!artist){const m=title.split(/\s+[-–]\s+/).map(x=>x.trim()).filter(Boolean);if(m.length===2){artist=m[0];title=m[1];}}
   const fn=cleanName(String(fileName||'').replace(/^\s*\d{1,2}(-\d{1,2})?[\s._-]+(?=\D)/,'')); // "01 Song.m4v" -> "Song"
   if(!title){const m=fn.split(/\s+[-–]\s+/);if(m.length===2){artist=artist||m[0];title=m[1];}}
   return {title,artist,query:title?((artist?artist+' ':'')+title):fn};
@@ -1985,7 +1987,7 @@ function openOwn(){$('scrim').classList.add('on');$('ownSheet').classList.add('o
 function closeOwn(){ownJob++;$('ownSheet').classList.remove('on');if(!$('sheet').classList.contains('on')&&!$('authSheet').classList.contains('on'))$('scrim').classList.remove('on');}
 function ownForm(msg){
   ownView('form');const e=$('ownErr');e.hidden=!msg;e.textContent=msg||'';
-  const q=pendingOwn.q||{};$('ownQ').value=q.title?(q.title+(q.artist?' '+q.artist:'')):'';$('ownSugg').innerHTML='';
+  const q=pendingOwn.q||{},h=q.heard||q;$('ownQ').value=h.title?(h.title+(h.artist?' '+h.artist:'')):'';$('ownSugg').innerHTML='';
   setTimeout(()=>{$('ownQ').focus();if($('ownQ').value)suggest();},50);
 }
 // Suggestions from MusicBrainz, the open music catalog: partial words work, best matches first.
@@ -2069,6 +2071,14 @@ async function ingestOwn(file){
   const anP=analyzeTrack(buf),splitP=aiSplit(file,buf,id);splitP.catch(()=>{});
   const judgeP=(async()=>{try{return await ai('judge',{song:await b64(clipWav(buf,Math.min(40,buf.duration*.3),40)),guess:{title:q.title,artist:q.artist}});}catch(e){console.warn('judge',e);return null;}})();
   const found=await findSong(q,buf.duration);if(job!==ownJob)return;
+  if(found.err==='none'){ // the label didn't lead anywhere: use the title and artist the AI heard
+    $('ownChecks').children[1].querySelector&&($('ownStep').textContent='Listening for the song');
+    const v=await judgeP;if(job!==ownJob)return;
+    if(v&&v.heardTitle){const hq={title:cleanTitle(v.heardTitle),artist:v.heardArtist||'',query:(v.heardArtist?v.heardArtist+' ':'')+v.heardTitle};
+      const f2=await findSong(hq,buf.duration);if(job!==ownJob)return;
+      if(!f2.err){Object.assign(q,hq);Object.assign(found,f2);delete found.err;}else q.heard=hq;}
+    $('ownStep').textContent='Setting the stage';
+  }
   pendingOwn={id,file,buf,q,found,anP,splitP,judgeP};
   if(found.err==='net')return ownForm('Couldn’t reach the lyrics library. Check your connection, then search again.');
   if(found.err)return ownForm('No synced lyrics found yet. Check the song title and artist.');
