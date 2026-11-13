@@ -31,6 +31,7 @@ Deno.serve(async (req) => {
     const { data } = await sb.auth.getUser(auth.replace(/^Bearer\s+/i, ""));
     if (!data?.user) return json({ error: "Sign in to use smart setup" }, 401);
     const body = await req.json();
+    console.log("belt-ai action:", body.action);
     if (body.action === "judge") return json(await judge(body));
     if (body.action === "split_start") return json(await splitStart(body));
     if (body.action === "split_poll") return json(await splitPoll(body));
@@ -39,7 +40,9 @@ Deno.serve(async (req) => {
     if (body.action === "words_poll") return json(await wordsPoll(body));
     return json({ error: "Unknown action" }, 400);
   } catch (e) {
-    return json({ error: String((e as Error)?.message || e) }, 500);
+    const msg = String((e as Error)?.message || e);
+    console.error("belt-ai failed:", msg); // shows in Supabase > Edge Functions > belt-ai > Logs
+    return json({ error: msg }, 500);
   }
 });
 
@@ -126,13 +129,14 @@ async function askGemini(key: string, payload: unknown) {
 
 /* ---------- Replicate: Demucs separation, a few cents per song ---------- */
 const RP = "https://api.replicate.com/v1";
-const rpHeaders = () => ({ Authorization: `Bearer ${env("REPLICATE_API_TOKEN")}`, "Content-Type": "application/json" });
+const rpToken = () => env("REPLICATE_API_TOKEN").trim().replace(/^["']|["']$/g, "").replace(/^Bearer\s+/i, "");
+const rpHeaders = () => ({ Authorization: `Bearer ${rpToken()}`, "Content-Type": "application/json" });
 const versions: Record<string, string> = {};
 
 async function rp(path: string, init?: RequestInit) {
   const r = await fetch(RP + path, { ...init, headers: rpHeaders() });
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j?.detail || j?.title || `Replicate error ${r.status}`);
+  if (!r.ok) throw new Error(`Replicate ${r.status} on ${path.split("?")[0]}: ${j?.detail || j?.title || "no details"}`);
   return j;
 }
 async function latest(model: string) {
