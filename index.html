@@ -44,6 +44,7 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px so
 /* Home */
 #home .bar0{display:flex;justify-content:space-between;align-items:center;height:44px}
 .kicker{font-size:15px;font-weight:700;color:var(--muted)}
+.signin{font-size:15px;font-weight:700;padding:10px 16px;border-radius:99px;box-shadow:inset 0 0 0 1.5px rgba(251,249,255,.32)}
 .mark{font-size:clamp(118px,38vw,200px);line-height:.78;letter-spacing:-.06em;margin-top:18px;font-weight:800;font-variation-settings:"opsz" 96}
 .meter{flex:1;display:flex;align-items:flex-end;gap:10px;margin:26px 0 22px;min-height:90px}
 .meter i{flex:1;height:100%;border-radius:18px 18px 6px 6px;transform-origin:bottom;will-change:transform;transform:scaleY(.5)}
@@ -260,6 +261,7 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
 .checks li[data-s=active]::before{animation:ping 1s ease-in-out infinite}
 .checks li[data-s=done]::before{background:var(--ink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23fbf9ff' d='M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z'/%3E%3C/svg%3E") center/15px no-repeat}
 @keyframes ping{50%{transform:scale(.72)}}
+.checks li[data-s=fail]::before{background:#a3202b url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath stroke='%23fbf9ff' stroke-width='3' stroke-linecap='round' d='M7 7l10 10M17 7 7 17'/%3E%3C/svg%3E") center/14px no-repeat;box-shadow:none}
 .own-by{font-size:20px;font-weight:700;margin-top:-4px}
 .own-album{font-size:15px;font-weight:500;opacity:.7;margin-top:-10px}
 .facts-list{list-style:none;display:grid;gap:7px;font-size:16px;font-weight:600}
@@ -283,7 +285,7 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
 <body>
 
 <section id="home" class="screen on" aria-label="Welcome">
-  <div class="bar0"><span class="kicker">Karaoke, out loud</span><button class="badge" id="homeMe" aria-label="Your profile"><svg class="belter" data-me="1" data-bust="head" viewBox="16 0 88 96"></svg></button></div>
+  <div class="bar0"><span class="kicker">Karaoke, out loud</span><button class="signin" id="homeSignIn" hidden>Sign in</button><button class="badge" id="homeMe" aria-label="Your profile" hidden><svg class="belter" data-me="1" data-bust="head" viewBox="16 0 88 96"></svg></button></div>
   <h1 class="mark">belt</h1>
   <div class="meter" id="meter" aria-hidden="true"><i style="background:var(--pink)"></i><i style="background:var(--mint)"></i><i style="background:var(--gold)"></i><i style="background:var(--violet)"></i><i style="background:var(--sky)"></i></div>
   <p class="tag">Pick a song. Sing it loud.</p>
@@ -427,6 +429,9 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
     <div class="mini-eq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
     <p class="own-step" id="ownStep">Setting the stage</p>
     <ul class="checks" id="ownChecks"></ul>
+    <p class="own-err" id="ownWorkErr" hidden></p>
+    <p class="fine-ink" id="ownWorkWhy" hidden style="text-align:left;word-break:break-word"></p>
+    <button class="btn ink" id="ownWorkClose" hidden>Close</button>
   </div>
   <div id="ownFound" hidden style="display:flex;flex-direction:column;gap:14px">
     <h3 id="ownTitle">Your song</h3>
@@ -884,6 +889,8 @@ function tonightSong(){const o=CATALOG.find(c=>c.song&&c.song.own);return o?o.so
 function paintTonight(){const s=tonightSong();$('tonightTitle').textContent=s.title;$('tonightDot').style.background=s.color;}
 $('tonight').onclick=()=>{const s=tonightSong();openPicker(CATALOG.find(c=>c.song===s));openSheet(s);};
 $('homeMe').onclick=()=>openMine();
+$('homeSignIn').onclick=()=>authFor('hello');
+function paintAuth(){const inn=!!user;$('homeMe').hidden=!inn;$('homeSignIn').hidden=inn||!sb;}
 
 /* ---------- Before you sing ---------- */
 let lyricStyle=pref('lyric','fill');if(!['fill','sweep','glow','bounce'].includes(lyricStyle))lyricStyle='fill';
@@ -1329,8 +1336,8 @@ async function saveTake(){
   catch(e){b.disabled=false;b.textContent='Save this take';toast('Couldn’t save. Check your connection and try again.');}
 }
 function authFor(kind){
-  $('authTitle').textContent=kind==='own'?'Sign in to add your songs':'Keep your takes';
-  $('authSub').textContent=kind==='own'?'Belt uses your account to separate the singer from the band and sync every word.':'Sign in once and your saved takes will be here next time.';
+  $('authTitle').textContent=kind==='own'?'Sign in to add your songs':kind==='hello'?'Sign in to Belt':'Keep your takes';
+  $('authSub').textContent=kind==='own'?'Belt uses your account to separate the singer from the band and sync every word.':kind==='hello'?'Save your takes and add your own songs. You can also just start singing.':'Sign in once and your saved takes will be here next time.';
   openAuth();
 }
 function openAuth(){$('scrim').classList.add('on');$('authSheet').classList.add('on');$('google').focus();}
@@ -1415,10 +1422,10 @@ $('google').onclick=signIn;
 $('authCancel').onclick=async()=>{await kv('del','pending');closeAuth();};
 $('mineBtn').onclick=openMine;
 $('mineBack').onclick=()=>openPicker();
-$('signOut').onclick=async()=>{if(!user){authFor('takes');return;}await sb.auth.signOut();user=null;openMine();toast('Signed out');};
+$('signOut').onclick=async()=>{if(!user){authFor('takes');return;}await sb.auth.signOut();user=null;paintAuth();openMine();toast('Signed out');};
 $('scrim').addEventListener('click',closeAuth);
 if(sb){
-  sb.auth.onAuthStateChange((ev,session)=>{const was=user;user=session?session.user:null;if(user&&!was)flushPending();});
+  sb.auth.onAuthStateChange((ev,session)=>{const was=user;user=session?session.user:null;paintAuth();if(user&&!was){closeAuth();flushPending();}});
 }
 
 /* ---------- Use your own track ----------
@@ -1787,7 +1794,7 @@ async function saveOwnPatch(id,patch){const rec=await kv('get','track:'+id);if(!
 
 /* The upload flow */
 let pendingOwn=null,ownJob=0;
-function checks(title,items){$('ownStep').textContent=title;$('ownChecks').innerHTML=items.map(t=>`<li>${esc(t)}</li>`).join('');}
+function checks(title,items){['ownWorkErr','ownWorkWhy','ownWorkClose'].forEach(i=>$(i).hidden=true);$('ownStep').textContent=title;$('ownChecks').innerHTML=items.map(t=>`<li>${esc(t)}</li>`).join('');}
 function tick(i,state){const li=$('ownChecks').children[i];if(li)li.dataset.s=state||'done';}
 const pause=ms=>new Promise(r=>setTimeout(r,ms));
 function ownView(v){$('ownWork').hidden=v!=='work';$('ownFound').hidden=v!=='found';$('ownForm').hidden=v!=='form';}
@@ -1815,11 +1822,18 @@ function ownFound(){
   (v?$('ownGo'):$('ownWrong')).focus();
 }
 const OWN_STEPS=['Reading the label','Finding the words','Separating the singer from the band','Learning the melody','Syncing every word to the singer','Mic check'];
+function ownFail(i,msg,e){
+  tick(i,'fail');$('ownWorkErr').hidden=false;$('ownWorkErr').textContent=msg;
+  const d=$('ownWorkWhy');d.hidden=!e;d.textContent=e?'Details: '+String(e.message||e).slice(0,240):'';$('ownWorkClose').hidden=false;
+}
 function setupError(e){
   const m=String(e&&e.message||e||'');
   if(/credit|balance|insufficient|payment/i.test(m))return 'Your AudioShake account is out of credits. Add credits, then try again.';
   if(/sign in/i.test(m))return 'Sign in, then add your song again.';
-  return 'Couldn’t separate the singer just now. Try again in a minute.';
+  if(/not set in the function secrets/i.test(m))return 'A key is missing in Supabase. Check the function secrets.';
+  if(/unknown action/i.test(m))return 'The Belt server function needs updating. Redeploy belt-ai in Supabase.';
+  if(/invalid jwt|\(401\)/i.test(m))return 'The server didn’t accept your sign-in. Turn off Verify JWT for belt-ai, or sign in again.';
+  return 'Couldn’t separate the singer. The details below say where it stopped.';
 }
 // One file in: the song as you normally hear it. Out: backing track, melody, word-perfect lyrics.
 async function ingestOwn(file){
@@ -1843,7 +1857,7 @@ async function ingestOwn(file){
 }
 async function finishOwn(job){
   const p=pendingOwn;ownView('work');checks('Setting the stage',OWN_STEPS);tick(0);tick(1);tick(2,'active');
-  let sp;try{sp=await p.splitP;}catch(e){if(job!==ownJob)return;console.warn('split',e);closeOwn();toast(setupError(e));return;}
+  let sp;try{sp=await p.splitP;}catch(e){if(job!==ownJob)return;console.warn('split',e);ownFail(2,setupError(e),e);return;}
   if(job!==ownJob)return;tick(2);tick(3,'active');
   let vb,ib;try{[vb,ib]=await Promise.all([ctx.decodeAudioData(await sp.vocal.arrayBuffer()),ctx.decodeAudioData(await sp.inst.arrayBuffer())]);}
   catch(e){if(job!==ownJob)return;closeOwn();toast('The separated parts didn’t come back right. Try again.');return;}
@@ -1859,7 +1873,7 @@ async function finishOwn(job){
 $('ownBtn').onclick=()=>{if(!aiOn()){authFor('own');return;}ensureCtx();const f=$('ownFile');f.value='';f.click();};
 $('ownFile').onchange=e=>{const f=e.target.files&&e.target.files[0];if(f)ingestOwn(f);};
 $('ownWrong').onclick=()=>ownForm('');
-$('ownCancel').onclick=closeOwn;
+$('ownCancel').onclick=closeOwn;$('ownWorkClose').onclick=closeOwn;
 $('ownForm').onsubmit=async e=>{
   e.preventDefault();if(!pendingOwn||!pendingOwn.buf){closeOwn();return;}
   const title=$('ownQTitle').value.trim(),artist=$('ownQArtist').value.trim();if(!title)return;
@@ -1888,7 +1902,8 @@ $('ownGo').onclick=async()=>{
 };
 /* Smart setup through the belt-ai server function (keys live there, never in the app) */
 const aiOn=()=>!!(sb&&user);
-async function ai(action,payload){const {data,error}=await sb.functions.invoke('belt-ai',{body:{action,...payload}});if(error)throw error;if(data&&data.error)throw new Error(data.error);return data;}
+async function fnError(error){let m=error&&error.message||'Request failed';try{const r=error.context;if(r&&r.json){const b=await r.clone().json();m=b.error||b.message||b.msg||m;if(r.status)m+=` (${r.status})`;}}catch(e){try{const t=await error.context.text();if(t)m=t.slice(0,200);}catch(e2){}}return new Error(m);}
+async function ai(action,payload){const {data,error}=await sb.functions.invoke('belt-ai',{body:{action,...payload}});if(error)throw await fnError(error);if(data&&data.error)throw new Error(data.error);return data;}
 const b64=blob=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result).split(',')[1]);r.onerror=rej;r.readAsDataURL(blob);});
 function clipWav(buf,t0,dur){const x=monoOf(buf),sr=buf.sampleRate,a=Math.max(0,Math.floor(t0*sr));return toWav(x.subarray(a,Math.min(x.length,a+Math.floor(dur*sr))),sr,16000);}
 async function aiJudge(backBuf,vb,notes,guess){
@@ -1914,22 +1929,23 @@ async function aiSplit(file,buf,id){
   let blob=file,ext=(file.name.split('.').pop()||'').toLowerCase();
   if(!['mp3','wav','flac','aiff'].includes(ext)){blob=toWav(monoOf(buf),buf.sampleRate,32000);ext='wav';}
   const path=`${user.id}/split/${id}-${Date.now()}.${ext}`;
-  const up=await sb.storage.from('takes').upload(path,blob,{contentType:ext==='mp3'?'audio/mpeg':'audio/'+ext});if(up.error)throw up.error;
+  const stage=async(name,fn)=>{try{return await fn();}catch(e){throw new Error(`${name}: ${e&&e.message||e}`);}};
+  await stage('Uploading the song',async()=>{const up=await sb.storage.from('takes').upload(path,blob,{contentType:ext==='mp3'?'audio/mpeg':'audio/'+ext});if(up.error)throw up.error;});
   try{
-    const su=await sb.storage.from('takes').createSignedUrl(path,3600);if(su.error)throw su.error;
-    const {id:task}=await ai('split_start',{url:su.data.signedUrl});
+    const url=await stage('Sharing the song with AudioShake',async()=>{const su=await sb.storage.from('takes').createSignedUrl(path,3600);if(su.error)throw su.error;return su.data.signedUrl;});
+    const {id:task}=await stage('Starting the separation',()=>ai('split_start',{url}));
     for(let i=0;;i++){
       if(i>100)throw new Error('Separation took too long');
-      await pause(4000);const r=await ai('split_poll',{id:task});
+      await pause(4000);const r=await stage('Checking the separation',()=>ai('split_poll',{id:task}));
       if(r.status==='completed')break;if(r.status==='error')throw new Error(r.error);
     }
-    const [vocal,inst]=await Promise.all([fetchPart(task,'vocals_lead'),fetchPart(task,'instrumental')]);
+    const [vocal,inst]=await stage('Downloading the parts',()=>Promise.all([fetchPart(task,'vocals_lead'),fetchPart(task,'instrumental')]));
     return {task,vocal,inst};
   }finally{sb.storage.from('takes').remove([path]);}
 }
 async function fetchPart(task,model){
   const {data,error}=await sb.functions.invoke('belt-ai',{body:{action:'fetch_output',id:task,model}});
-  if(error)throw error;if(!(data instanceof Blob))throw new Error((data&&data.error)||'No audio came back');return data;
+  if(error)throw await fnError(error);if(!(data instanceof Blob))throw new Error((data&&data.error)||'No audio came back');return data;
 }
 async function aiAlignTask(task,dur){
   const {id}=await ai('align_start',{taskId:task,model:'vocals_lead'});
@@ -2019,7 +2035,7 @@ $('ownRemove').onclick=async()=>{
 };
 $('scrim').addEventListener('click',()=>{if($('ownSheet').classList.contains('on'))closeOwn();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('ownSheet').classList.contains('on'))closeOwn();});
-paintTonight();renderChips();
+paintTonight();renderChips();paintAuth();
 loadOwnLibrary();
 </script>
 </body>

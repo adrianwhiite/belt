@@ -25,7 +25,9 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   try {
     const auth = req.headers.get("Authorization") || "";
-    const sb = createClient(env("SUPABASE_URL"), env("SUPABASE_ANON_KEY"));
+    // the app's own public key comes with every request; older projects also have SUPABASE_ANON_KEY
+    const key = req.headers.get("apikey") || Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY") || "";
+    const sb = createClient(env("SUPABASE_URL"), key);
     const { data } = await sb.auth.getUser(auth.replace(/^Bearer\s+/i, ""));
     if (!data?.user) return json({ error: "Sign in to use smart setup" }, 401);
     const body = await req.json();
