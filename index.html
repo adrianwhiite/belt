@@ -4,7 +4,25 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1d1631">
-<title>Belt</title>
+<title>Belt: karaoke, out loud</title>
+<meta name="description" content="Pick a song, sing it loud and see how you did. Free karaoke with live pitch and scoring, right in your browser.">
+<link rel="canonical" href="https://letsbelt.com/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Belt">
+<meta property="og:title" content="Belt: karaoke, out loud">
+<meta property="og:description" content="Pick a song, sing it loud and see how you did. Can you beat your friends?">
+<meta property="og:url" content="https://letsbelt.com/">
+<meta property="og:image" content="https://letsbelt.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/icon-192.png" sizes="192x192" type="image/png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Belt">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&display=swap" rel="stylesheet">
@@ -285,6 +303,8 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
 .card-sub{font-size:15px;color:var(--muted);line-height:1.35}
 .card-hear{justify-self:start;font-size:15px;font-weight:700;color:var(--c);padding:6px 0 0}
 .actions{display:grid;gap:10px;margin-top:auto;padding-top:24px}
+.row2{display:flex;gap:10px}
+.row2 .btn{flex:1;width:auto;min-width:0;font-size:16px;min-height:54px;padding:0 10px}
 .note{font-size:14px;line-height:1.45;color:var(--muted);background:var(--ink-2);border-radius:16px;padding:12px 14px;display:none}
 .note.on{display:block}
 
@@ -378,7 +398,7 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
   <h1 class="mark">belt</h1>
   <div class="meter" id="meter" aria-hidden="true"><i style="background:var(--pink)"></i><i style="background:var(--mint)"></i><i style="background:var(--gold)"></i><i style="background:var(--violet)"></i><i style="background:var(--sky)"></i></div>
   <p class="tag">Pick a song. Sing it loud.</p>
-  <button class="tonight" id="tonight"><i id="tonightDot"></i><span><small>Tonight’s pick</small><b id="tonightTitle">Jingle Bells</b></span><em>Sing it</em></button>
+  <button class="tonight" id="tonight"><i id="tonightDot"></i><span><small id="tonightLabel">Tonight’s pick</small><b id="tonightTitle">Jingle Bells</b></span><em>Sing it</em></button>
   <button class="btn" id="go">Start singing</button>
   <nav class="legal" aria-label="Legal"><a href="/privacy">Privacy</a><a href="/terms">Terms</a></nav>
 </section>
@@ -525,11 +545,11 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
     </div>
     <button class="coach-hide" id="coachHide" aria-controls="coach">Hide breakdown</button>
   </div>
-  <p class="note" id="demoNote">Preview mode: this page can’t use the mic here, so you’re hearing a pretend singer. Open Belt in your browser to record your own voice.</p>
+  <p class="note" id="demoNote">Belt couldn’t use your microphone, so this is a pretend singer. Allow the microphone for letsbelt.com in your browser’s site settings, then sing again.</p>
   <div class="actions">
     <button class="btn" id="save" hidden>Save this take</button>
     <button class="btn" id="again">Sing again</button>
-    <button class="btn ghost" id="another">Pick another song</button>
+    <div class="row2"><button class="btn ghost" id="shareScore">Challenge a friend</button><button class="btn ghost" id="another">New song</button></div>
   </div>
 </section>
 
@@ -831,6 +851,20 @@ function ensureCtx(){
 // On the speaker the mic also hears the song, so let the browser cancel the phone's own playback (like a video call).
 // With headphones ("Hear yourself" on) there's nothing to cancel, so the mic stays untouched for the cleanest voice.
 let micAec=null,micNodes=[];
+// Let go of the mic when you're off the stage: the phone's recording light goes out, and Bluetooth
+// earbuds switch back from call quality to music quality for the playback.
+function releaseMic(){
+  if(!micStream)return;
+  micStream.getTracks().forEach(t=>t.stop());micNodes.forEach(n=>{try{n.disconnect();}catch(e){}});micStream=null;micNodes=[];analyser=null;monitor=null;micAec=null;
+}
+// Keep the screen awake while you're on the stage; nobody touches their phone mid-song.
+let wake=null;
+async function stayAwake(on){
+  try{
+    if(on){if(!wake&&navigator.wakeLock&&document.visibilityState==='visible'){wake=await navigator.wakeLock.request('screen');wake.addEventListener('release',()=>{wake=null;});}}
+    else if(wake){const w=wake;wake=null;await w.release();}
+  }catch(e){wake=null;}
+}
 async function getMic(aec){
   aec=!!aec;
   if(micStream&&micAec===aec)return true;
@@ -1133,8 +1167,11 @@ function wash(el,update){
 }
 $('go').onclick=e=>wash(e.currentTarget,()=>openPicker());
 $('pickBack').onclick=e=>wash(e.currentTarget,()=>{show('home');paintTonight();});
-function tonightSong(){const o=CATALOG.find(c=>c.song&&c.song.own);return o?o.song:SONG_BY_ID.jingle;}
-function paintTonight(){const s=tonightSong();$('tonightTitle').textContent=s.title;$('tonightDot').style.background=s.color;}
+// A challenge link (letsbelt.com/?c=song.score.name) opens Belt with that song up front and a score to beat.
+let challenge=null;
+function tonightSong(){if(challenge)return challenge.song;const o=CATALOG.find(c=>c.song&&c.song.own);return o?o.song:SONG_BY_ID.jingle;}
+function paintTonight(){const s=tonightSong();$('tonightTitle').textContent=s.title;$('tonightDot').style.background=s.color;
+  $('tonightLabel').textContent=challenge?`${challenge.by} scored ${challenge.score}%. Beat it?`:'Tonight’s pick';}
 $('tonight').onclick=e=>{const s=tonightSong();wash(e.currentTarget,()=>openPicker(CATALOG.find(c=>c.song===s)));setTimeout(()=>openSheet(s),reduceMotion?0:420);};
 $('homeMe').onclick=()=>openMine();
 $('homeSignIn').onclick=()=>authFor('hello');
@@ -1196,11 +1233,11 @@ function readySong(){
   stopMix();run=null;
   const song=current,sg=$('sing');
   $('singTitle').textContent=song.title;
-  $('micLabel').textContent=demo?'Preview: the mic is blocked on this page':'';
+  $('micLabel').textContent=demo?'The mic is off, so you’ll hear a pretend singer':'';
   ['lineNow','lnN1','lnN2','lnN3','lnN4'].forEach(id=>$(id).textContent='');$('breath').classList.remove('on');
   $('lyrics').className='lyrics ly-'+lyricStyle;$('left').textContent=fmtLen(song.lastEnd-Math.min(0,song.firstT))+' left';
   sg.style.background='';sg.style.setProperty('--lights','.75');clearTimeout(sg._t);sg.classList.remove('live','clearing');sg.classList.add('is-ready');
-  show('sing');setTimeout(()=>$('readyGo').focus(),60);
+  show('sing');stayAwake(true);setTimeout(()=>$('readyGo').focus(),60);
 }
 $('readyGo').onclick=()=>{
   ensureCtx();const sg=$('sing');sg.classList.remove('is-ready');sg.classList.add('clearing');sg.style.setProperty('--lights','.5');startSong();
@@ -1380,7 +1417,7 @@ function stopRun(){
   if(monitor)monitor.gain.setTargetAtTime(0,now,.05);
   for(const x of [run.back,run.gd].filter(Boolean)){x.g.gain.setTargetAtTime(0,now,.15);try{x.s.stop(now+.6);}catch(e){}}
 }
-function leaveStage(){clearTimeout($('sing')._t);$('sing').classList.remove('live','is-ready','clearing');$('sing').style.background='';show('pick');}
+function leaveStage(){stayAwake(false);releaseMic();clearTimeout($('sing')._t);$('sing').classList.remove('live','is-ready','clearing');$('sing').style.background='';show('pick');}
 function openQuit(){$('scrim').classList.add('on');$('quitSheet').classList.add('on');$('qKeep').focus();}
 function closeQuit(){$('quitSheet').classList.remove('on');$('scrim').classList.remove('on');if(ctx&&ctx.state==='suspended')ctx.resume();}
 $('quit').onclick=()=>{
@@ -1395,8 +1432,10 @@ $('scrim').addEventListener('click',()=>{if($('quitSheet').classList.contains('o
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('quitSheet').classList.contains('on'))closeQuit();});
 function finish(){
   const r=run;r.rec=false;stopRun();run=null;clearTimeout($('sing')._t);$('sing').classList.remove('live','clearing');
+  stayAwake(false);releaseMic();
   $('busy').classList.add('on');
   setTimeout(()=>{
+   try{
     const song=r.song,sr=ctx.sampleRate;let voice;
     if(demo)voice=inKeyMode(song)?fakeVoiceOwn(song,sr,r.fake):fakeVoice(song,sr);
     else{
@@ -1408,8 +1447,20 @@ function finish(){
     const until=r.stopT??null,sc=scoreTake(song,voice,sr,until);
     last={song,voice,sc,until};if(!demo){rememberTake(song,sc);setPref('sung',String(+pref('sung','0')+1));}
     $('busy').classList.remove('on');showResults();
+   }catch(e){ // never leave anyone stuck on the stage
+    console.error('finish',e);$('busy').classList.remove('on');
+    if(!$('result').classList.contains('on')){leaveStage();toast('Something went wrong scoring that take. Give it another go.');}
+   }
   },60);
 }
+// Leaving the app mid-song (a call, a text, the lock button) pauses the song; you come back to "Keep singing".
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='hidden'){
+    if(run&&$('sing').classList.contains('on')&&!$('quitSheet').classList.contains('on')){if(ctx.state==='running')ctx.suspend();openQuit();}
+    else if(mix)stopMix();
+    if(pv.on)stopPreview();
+  }else if($('sing').classList.contains('on'))stayAwake(true);
+});
 
 /* ---------- Results ---------- */
 function verdictFor(sc){
@@ -1428,11 +1479,51 @@ function showResults(){
   const quiet=sc.cover<.15;
   $('verdict').textContent=quiet?'We couldn\u2019t hear you':FUN[Math.floor(Math.random()*FUN.length)];
   $('sub').textContent=quiet?'Check that the mic is allowed, then sing out a little louder.':'Hit play to hear yourself, then pick a sound.';
+  if(!quiet&&challenge&&challenge.song===song){const me=Math.round(sc.acc*100),d=me-challenge.score;
+    $('sub').textContent=d>0?`You beat ${challenge.by}’s ${challenge.score}%. Send it back.`:d===0?`Tied with ${challenge.by} at ${me}%. Go again?`:`${-d} short of ${challenge.by}’s ${challenge.score}%. Go again?`;}
+  $('shareScore').hidden=quiet;last.card=null;if(!quiet)scoreCard().then(b=>{if(last&&last.song===song)last.card=b;}).catch(()=>{});
   $('demoNote').classList.toggle('on',demo);
   setSaveState();
   show('result');setCoach(coachPref()&&!quiet,false);cheer(!quiet);paintStats(quiet);
   if(!quiet)setTimeout(()=>confetti(sc.acc*Math.min(1,sc.cover/.6)),180);
 }
+// Sharing: a picture of your score plus a link. For Belt's own songs the link is a challenge: it opens
+// the same song for your friend with your score to beat. (Your own songs live on your device, so those just share the score.)
+const SITE='https://letsbelt.com';
+const firstName=()=>{const m=user&&user.user_metadata,n=m&&(m.full_name||m.name)||'';return String(n).trim().split(/\s+/)[0].replace(/[^\p{L}\-]/gu,'').slice(0,16);};
+function shareLink(){const {song,sc}=last,n=firstName();return song.own?SITE:`${SITE}/?c=${song.id}.${Math.round(sc.acc*100)}${n?'.'+encodeURIComponent(n):''}`;}
+async function scoreCard(){
+  const {song,sc}=last,score=Math.round(sc.acc*100),W=1080,H=1350,cv=document.createElement('canvas');cv.width=W;cv.height=H;
+  if(document.fonts&&document.fonts.load)try{await document.fonts.load('800 100px "Bricolage Grotesque"');}catch(e){}
+  const g=cv.getContext('2d'),ink='#1d1631',F=(w,px)=>`${w} ${px}px "Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif`;
+  g.fillStyle=song.color;g.fillRect(0,0,W,H);
+  // the bars from the home screen, big and faint, as the backdrop
+  const cols=['#ff5d8f','#3ddc97','#ffb020','#9b8aff','#4cc9f0'],hs=[.86,.5,.36,.74,.58],bw=168,gap=30,x0=(W-5*bw-4*gap)/2;
+  g.globalAlpha=.16;g.fillStyle=ink;hs.forEach((h,i)=>{const bh=h*420,x=x0+i*(bw+gap),y=H-bh;g.beginPath();g.roundRect?g.roundRect(x,y,bw,bh+60,[46,46,0,0]):g.rect(x,y,bw,bh);g.fill();});g.globalAlpha=1;
+  g.fillStyle=ink;g.textBaseline='alphabetic';
+  g.font=F(800,84);g.letterSpacing='-4px';g.fillText('belt',84,150);
+  g.font=F(800,430);g.letterSpacing='-26px';const num=String(score),nw=g.measureText(num).width;g.fillText(num,70,640);
+  g.font=F(800,170);g.letterSpacing='-6px';g.fillText('%',70+nw+6,640);
+  g.letterSpacing='-1px';g.font=F(700,52);g.globalAlpha=.75;g.fillText(inKeyMode(song)?'in tune on':'on pitch on',84,740);g.globalAlpha=1;
+  // the song title, shrunk to fit on up to two lines
+  let px=104,lines;const wrap=()=>{g.font=F(800,px);g.letterSpacing=(-px*.04).toFixed(1)+'px';const ws=song.title.split(' ');lines=[''];for(const w of ws){const t=lines[lines.length-1]?lines[lines.length-1]+' '+w:w;if(g.measureText(t).width>W-168&&lines[lines.length-1])lines.push(w);else lines[lines.length-1]=t;}};
+  for(wrap();(lines.length>2||lines.some(l=>g.measureText(l).width>W-168))&&px>48;px-=6,wrap());
+  lines.slice(0,2).forEach((l,i)=>g.fillText(l,84,860+i*px*1.02));
+  g.font=F(800,50);g.letterSpacing='-1px';const cta=song.own?'Sing yours at letsbelt.com':'Beat me at letsbelt.com',cw=g.measureText(cta).width+92;
+  g.beginPath();g.roundRect?g.roundRect(84,H-216,cw,116,58):g.rect(84,H-216,cw,116);g.fill();g.fillStyle='#fbf9ff';g.fillText(cta,130,H-140);
+  return new Promise((res,rej)=>cv.toBlob(b=>b?res(b):rej(new Error('no card')),'image/png'));
+}
+$('shareScore').onclick=async()=>{
+  if(!last)return;const {song,sc}=last,score=Math.round(sc.acc*100),url=shareLink();
+  const text=song.own?`I scored ${score}% on ${song.title} on Belt.`:`I scored ${score}% on ${song.title}. Beat me.`;
+  const copy=async()=>{try{await navigator.clipboard.writeText(text+' '+url);toast('Link copied. Paste it to a friend.');}catch(e){toast('Sharing isn’t available in this browser.');}};
+  try{
+    const file=last.card?new File([last.card],'belt-score.png',{type:'image/png'}):null;
+    if(file&&navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],text:text+' '+url});return;}
+    if(navigator.share){await navigator.share({text,url});return;}
+    await copy();
+  }catch(e){if(!(e&&e.name==='AbortError'))await copy();}
+};
 // The numbers: score counts up, then your top note and longest note (or how much you sang).
 function paintStats(quiet){
   const {song,sc}=last,own=inKeyMode(song),key=sc.key||0,box=$('rstats');
@@ -1669,7 +1760,7 @@ document.querySelectorAll('.stabs [role=tab]').forEach(tb=>tb.onclick=()=>{
 });
 $('play').onclick=()=>mix?stopMix():playMix();
 $('bal').oninput=()=>{if(!mix)return;const {music,voice}=balGains();mix.gb.gain.setTargetAtTime(music,ctx.currentTime,.05);mix.gv.gain.setTargetAtTime(voice,ctx.currentTime,.05);};
-$('again').onclick=async()=>{stopMix();ensureCtx();current=last.song;tracks=await tracksFor(current);readySong();};
+$('again').onclick=async()=>{stopMix();ensureCtx();current=last.song;tracks=await tracksFor(current);const ok=await getMic(!$('monitor').checked);demo=!ok;readySong();};
 $('another').onclick=$('resBack').onclick=()=>{stopMix();show('pick');};
 window.addEventListener('resize',()=>{if(last&&$('result').classList.contains('on')&&!$('coach').hidden)drawGraph(null);});
 
@@ -1813,6 +1904,7 @@ async function openTake(path,songId){
 $('takes').onclick=async e=>{
   const o=e.target.closest('.take-open');if(o){openTake(o.dataset.path,o.dataset.song);return;}
   const d=e.target.closest('.take-del');if(!d)return;
+  if(!d.dataset.sure){d.dataset.sure='1';d.textContent='Really delete?';setTimeout(()=>{if(d.isConnected&&!d.disabled){delete d.dataset.sure;d.textContent='Delete';}},3500);return;}
   const li=d.closest('.take');d.disabled=true;
   await sb.storage.from('takes').remove([d.dataset.path]);
   const {error}=await sb.from('takes').delete().eq('id',li.dataset.id);
@@ -1827,7 +1919,7 @@ $('mineBack').onclick=()=>openPicker();
 $('signOut').onclick=async()=>{if(!user){authFor('takes');return;}await sb.auth.signOut();user=null;paintAuth();openMine();toast('Signed out');};
 $('scrim').addEventListener('click',closeAuth);
 if(sb){
-  sb.auth.onAuthStateChange((ev,session)=>{const was=user;user=session?session.user:null;paintAuth();if(user&&!was){closeAuth();flushPending();}});
+  sb.auth.onAuthStateChange((ev,session)=>{const was=user;user=session?session.user:null;paintAuth();if(user&&!was){const open=$('authSheet').classList.contains('on');closeAuth();if(open)toast('You’re signed in');flushPending();}});
 }
 
 /* ---------- Use your own track ----------
@@ -2410,7 +2502,8 @@ async function ingestOwn(file){
   }
   const q=guessSong(tags,file.name);
   await pause(300);tick(0);tick(1,'active');
-  const anP=analyzeTrack(buf),splitP=aiSplit(file,buf,id);splitP.catch(()=>{});
+  let gotTask;const taskP=new Promise(r=>gotTask=r);
+  const anP=analyzeTrack(buf),splitP=aiSplit(file,buf,id,gotTask);splitP.catch(()=>{});
   const judgeP=(async()=>{try{return await ai('judge',{song:await b64(clipWav(buf,Math.min(40,buf.duration*.3),40)),guess:{title:q.title,artist:q.artist}});}catch(e){console.warn('judge',e);return null;}})();
   const found=await findSong(q,buf.duration);if(job!==ownJob)return;
   if(found.err==='none'){ // the label didn't lead anywhere: use the title and artist the AI heard
@@ -2421,13 +2514,15 @@ async function ingestOwn(file){
       if(!f2.err){Object.assign(q,hq);Object.assign(found,f2);delete found.err;}else q.heard=hq;}
     $('ownStep').textContent='Setting the stage';
   }
-  pendingOwn={id,file,buf,q,found,anP,splitP,judgeP};
+  pendingOwn={id,file,buf,q,found,anP,splitP,judgeP,taskP};
   if(found.err==='net')return ownForm('Couldn’t reach the lyrics library. Check your connection, then search again.');
   if(found.err)return ownForm('No synced lyrics found yet. Check the song title and artist.');
   finishOwn(job);
 }
 async function finishOwn(job){
   const p=pendingOwn;ownView('work');checks('Setting the stage',OWN_STEPS);tick(0);tick(1);tick(2,'active');
+  // word timing starts the moment the singer is separated, while the parts download and the melody is read
+  if(p.wordsFor!==p.found.lrc){p.wordsFor=p.found.lrc;p.wordsP=p.taskP.then(task=>aiWords(task,p.found.lrc,p.buf.duration));p.wordsP.catch(()=>{});}
   let sp;try{sp=await p.splitP;}catch(e){if(job!==ownJob)return;console.warn('split',e);ownFail(2,setupError(e),e);return;}
   if(job!==ownJob)return;tick(2);tick(3,'active');
   let vb,ib;try{[vb,ib]=await Promise.all([ctx.decodeAudioData(await sp.vocal.arrayBuffer()),ctx.decodeAudioData(await sp.inst.arrayBuffer())]);}
@@ -2436,7 +2531,7 @@ async function finishOwn(job){
   if(notes.length<20||(verdict&&verdict.hasLeadVocal===false)){closeOwn();toast('This file has no singing in it. Upload the song the way you normally hear it, with the singer.');return;}
   tick(3);tick(4,'active');
   const al=alignToMelody(notes,p.found.lrc);let wt=null,wordsWhy='';
-  try{const heard=await aiWords(sp.task,p.found.lrc,vb.duration);wt=mapWords(p.found.lrc,heard);
+  try{const heard=await p.wordsP;wt=mapWords(p.found.lrc,heard);
     if(!wt)console.warn('words: '+(wordsWhy=heard.length<10?`it heard only ${heard.length} words`:`the ${heard.length} words it heard didn’t match the lyrics`));}
   catch(e){console.warn('words',e);wordsWhy=String(e&&e.message||e).slice(0,140);} // falls back to the melody
   if(job!==ownJob)return;tick(4);tick(5,'active');await pause(400);tick(5);await pause(300);
@@ -2503,30 +2598,40 @@ async function aiSync(vfile,vb,id){
     throw new Error('Alignment took too long');
   }finally{sb.storage.from('takes').remove([path]);}
 }
-// The song goes to private storage for a one-hour link AudioShake can read, then it's deleted.
-async function aiSplit(file,buf,id){
-  let blob=file,ext=(file.name.split('.').pop()||'').toLowerCase();
-  if(!['mp3','wav','flac','aiff'].includes(ext)){blob=stereoWav(buf,32000);ext='wav';}
+// The song goes to private storage for a one-hour link the separation service can read, then it's deleted.
+// Upload the smallest thing that works: the file itself when it's an audio format the service reads
+// (an iTunes .m4a is a fifth the size of the same song as WAV), otherwise the soundtrack as WAV.
+// onTask is called as soon as the separation is done, before the parts are downloaded, so word timing can start right away.
+const SPLIT_READS=['mp3','wav','flac','aiff','aif','m4a','aac','ogg','oga','opus','mp4','m4v','mov'],MIME={mp3:'audio/mpeg',m4a:'audio/mp4',aac:'audio/aac',mp4:'video/mp4',m4v:'video/mp4',mov:'video/quicktime'};
+async function aiSplit(file,buf,id,onTask){
+  const ext0=(file.name.split('.').pop()||'').toLowerCase(),wavBytes=buf.duration*32000*4;
+  const asIs=SPLIT_READS.includes(ext0)&&file.size<=Math.min(45e6,['mp3','wav','flac','aiff','aif'].includes(ext0)?45e6:wavBytes);
+  try{return await splitOnce(asIs?file:stereoWav(buf,32000),asIs?ext0:'wav',id,onTask);}
+  catch(e){ // the service couldn't read that format: send the plain soundtrack instead
+    if(!asIs||ext0==='wav'||/too long|Uploading|401|402|429/i.test(String(e&&e.message)))throw e;
+    console.warn('split retry as wav',e);return splitOnce(stereoWav(buf,32000),'wav',id,onTask);
+  }
+}
+async function splitOnce(blob,ext,id,onTask){
   const path=`${user.id}/split/${id}-${Date.now()}.${ext}`;
   const stage=async(name,fn)=>{try{return await fn();}catch(e){throw new Error(`${name}: ${e&&e.message||e}`);}};
-  await stage('Uploading the song',async()=>{const up=await sb.storage.from('takes').upload(path,blob,{contentType:ext==='mp3'?'audio/mpeg':'audio/'+ext});if(up.error)throw up.error;});
+  await stage('Uploading the song',async()=>{const up=await sb.storage.from('takes').upload(path,blob,{contentType:MIME[ext]||'audio/'+ext});if(up.error)throw up.error;});
   try{
-    const url=await stage('Sharing the song with AudioShake',async()=>{const su=await sb.storage.from('takes').createSignedUrl(path,3600);if(su.error)throw su.error;return su.data.signedUrl;});
+    const url=await stage('Sharing the song',async()=>{const su=await sb.storage.from('takes').createSignedUrl(path,3600);if(su.error)throw su.error;return su.data.signedUrl;});
     const {id:task}=await stage('Starting the separation',()=>ai('split_start',{url}));
     let parts=[];
     for(let i=0;;i++){
-      if(i>130)throw new Error('Separation took too long');
-      await pause(4000);const r=await stage('Checking the separation',()=>ai('split_poll',{id:task}));
+      if(i>200)throw new Error('Separation took too long');
+      await pause(i<4?1500:2500);const r=await stage('Checking the separation',()=>ai('split_poll',{id:task}));
       if(r.status==='completed'){parts=r.parts||[];break;}if(r.status==='error')throw new Error(r.error);
     }
+    if(onTask)onTask(task);
     return await stage('Downloading the parts',async()=>{
-      const vocal=await fetchPart(task,'vocals');
-      let inst;try{inst=await fetchPart(task,'instrumental');}
-      catch(e){ // some versions return drums, bass and other separately: mix them into one backing track
-        const rest=parts.filter(k=>k!=='vocals'&&!k.startsWith('no_'));if(!rest.length)throw e;
-        const bufs=await Promise.all(rest.map(async k=>ctx.decodeAudioData(await (await fetchPart(task,k)).arrayBuffer())));
-        inst=mixToWav(bufs);
-      }
+      // the band comes back as one "everything but the singer" part, or as drums, bass and other to mix together
+      const whole=['no_vocals','no_stem','accompaniment','instrumental'].some(k=>parts.includes(k)),rest=parts.filter(k=>k!=='vocals'&&!k.startsWith('no_'));
+      const instP=whole||!rest.length?fetchPart(task,'instrumental'):rest.length===1?fetchPart(task,rest[0])
+        :Promise.all(rest.map(async k=>ctx.decodeAudioData(await (await fetchPart(task,k)).arrayBuffer()))).then(mixToWav);
+      const [vocal,inst]=await Promise.all([fetchPart(task,'vocals'),instP]);
       return {task,vocal,inst};
     });
   }finally{sb.storage.from('takes').remove([path]);}
@@ -2556,7 +2661,7 @@ function mixToWav(bufs){
 async function aiWords(task,lrc,dur){
   const prompt=lrc.map(l=>l.text).filter(Boolean).join(' ');
   const {id}=await ai('words_start',{splitId:task,prompt});
-  for(let i=0;i<150;i++){await pause(3500);const r=await ai('words_poll',{id});
+  for(let i=0;i<220;i++){await pause(i<3?1500:2500);const r=await ai('words_poll',{id});
     if(r.status==='completed')return wordsFrom(r.data,dur);if(r.status==='error')throw new Error(r.error);}
   throw new Error('Word timing took too long');
 }
@@ -2652,8 +2757,38 @@ $('ownRemove').onclick=async()=>{
 };
 $('scrim').addEventListener('click',()=>{if($('ownSheet').classList.contains('on'))closeOwn();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('ownSheet').classList.contains('on'))closeOwn();});
+// Opened from a challenge link? Remember who to beat, then tidy the address bar.
+try{
+  const c=new URLSearchParams(location.search).get('c');
+  if(c){const [id,sc,by]=c.split('.'),song=SONG_BY_ID[id],n=Math.round(+sc);
+    if(song&&n>=0&&n<=100)challenge={song,score:n,by:(by||'').replace(/[^\p{L}\- ]/gu,'').slice(0,16)||'A friend'};
+    history.replaceState(null,'',location.pathname);}
+}catch(e){}
 paintTonight();renderChips();paintAuth();
 loadOwnLibrary();
+
+/* ---------- The phone's back button or back swipe goes back one step in Belt instead of leaving the site ---------- */
+let guard=false,skipPop=false;
+const atRoot=()=>$('home').classList.contains('on')&&!document.querySelector('.sheet.on');
+function syncGuard(){
+  if(atRoot()){if(guard){guard=false;skipPop=true;history.back();}}
+  else if(!guard){guard=true;history.pushState({belt:1},'');}
+}
+function goBack(){
+  const open=id=>$(id).classList.contains('on');
+  if(open('quitSheet'))return closeQuit();
+  if(open('ownSheet'))return closeOwn();
+  if(open('authSheet'))return closeAuth();
+  if(open('castSheet'))return closeCast();
+  if(open('sheet'))return closeSheet();
+  const on=document.querySelector('.screen.on').id;
+  if(on==='sing')$('quit').click();
+  else if(on==='result'){stopMix();show('pick');}
+  else if(on==='mine')openPicker();
+  else if(on==='pick'){show('home');paintTonight();}
+}
+window.addEventListener('popstate',()=>{if(skipPop){skipPop=false;return;}guard=false;goBack();syncGuard();});
+{const mo=new MutationObserver(()=>queueMicrotask(syncGuard));document.querySelectorAll('.screen,.sheet').forEach(el=>mo.observe(el,{attributes:true,attributeFilter:['class']}));}
 </script>
 </body>
 </html>
