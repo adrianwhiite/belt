@@ -55,6 +55,7 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px so
 .tonight small{display:block;font-size:13px;font-weight:700;color:var(--muted)}
 .tonight b{display:block;font-size:19px;font-weight:800;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tonight em{font-style:normal;font-size:15px;font-weight:700;color:var(--mint)}
+.gbtn{display:flex;justify-content:center;min-height:44px;margin-bottom:10px}
 .legal{display:flex;justify-content:center;gap:20px;margin-top:12px}
 .legal a{font-size:13px;font-weight:600;color:var(--muted);text-decoration:none;padding:4px 2px}
 .legal a:focus-visible{outline:2px solid currentColor;outline-offset:2px;border-radius:4px}
@@ -476,6 +477,7 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
 <div class="sheet" id="authSheet" role="dialog" aria-modal="true" aria-labelledby="authTitle">
   <h3 id="authTitle">Keep your takes</h3>
   <p class="sheet-meta" id="authSub">Sign in once and your saved takes will be here next time.</p>
+  <div class="gbtn" id="gbtn" hidden></div>
   <button class="btn ink google" id="google" style="gap:12px"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:22px;height:22px;background:#fff;border-radius:50%;padding:2px"><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.4h6.5a5.6 5.6 0 0 1-2.4 3.6v3h3.9c2.3-2.1 3.5-5.2 3.5-8.7z"/><path fill="#34A853" d="M12 24c3.2 0 6-1.1 8-2.9l-3.9-3c-1.1.7-2.5 1.2-4.1 1.2-3.1 0-5.8-2.1-6.7-5H1.3v3.1A12 12 0 0 0 12 24z"/><path fill="#FBBC05" d="M5.3 14.3a7.2 7.2 0 0 1 0-4.6V6.6H1.3a12 12 0 0 0 0 10.8z"/><path fill="#EA4335" d="M12 4.8c1.8 0 3.3.6 4.6 1.8l3.4-3.4A12 12 0 0 0 1.3 6.6l4 3.1c.9-2.9 3.6-4.9 6.7-4.9z"/></svg>Continue with Google</button>
   <button class="btn ghost-ink" id="authCancel">Not now</button>
 </div>
@@ -1546,7 +1548,33 @@ function authFor(kind){
   $('authSub').textContent=kind==='own'?'Belt uses your account to separate the singer from the band and sync every word.':kind==='hello'?'Save your takes and add your own songs. You can also just start singing.':'Sign in once and your saved takes will be here next time.';
   openAuth();
 }
-function openAuth(){$('scrim').classList.add('on');$('authSheet').classList.add('on');$('google').focus();}
+function openAuth(){$('scrim').classList.add('on');$('authSheet').classList.add('on');$('google').focus();googleButton();}
+// Google's own sign-in button: you sign in on letsbelt.com and Google hands Belt a token, so the
+// Google screen names our site instead of the sign-in server's address. If Google's script can't
+// load, the regular "Continue with Google" button (a redirect through Supabase) stays.
+const GOOGLE_CLIENT_ID='';
+let gisP=null;
+function loadGis(){
+  if(gisP)return gisP;
+  gisP=new Promise((res,rej)=>{const sc=document.createElement('script');sc.src='https://accounts.google.com/gsi/client';sc.async=true;
+    sc.onload=()=>window.google&&google.accounts?res(google):rej(new Error('no gis'));sc.onerror=()=>rej(new Error('gis blocked'));
+    document.head.appendChild(sc);setTimeout(()=>rej(new Error('gis timeout')),8000);});
+  gisP.catch(()=>{gisP=null;});return gisP;
+}
+const hex=b=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
+async function googleButton(){
+  if(!GOOGLE_CLIENT_ID||!sb)return;
+  try{
+    const g=await loadGis();
+    const raw=hex(crypto.getRandomValues(new Uint8Array(16))),hashed=hex(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(raw)));
+    g.accounts.id.initialize({client_id:GOOGLE_CLIENT_ID,nonce:hashed,ux_mode:'popup',itp_support:true,use_fedcm_for_button:true,
+      callback:async r=>{const {error}=await sb.auth.signInWithIdToken({provider:'google',token:r.credential,nonce:raw});
+        if(error){console.warn('google id token',error);toast('Google sign-in didn’t finish. Try again.');googleButton();}}});
+    const box=$('gbtn');box.innerHTML='';
+    g.accounts.id.renderButton(box,{type:'standard',theme:'filled_black',size:'large',shape:'pill',text:'continue_with',logo_alignment:'center',width:Math.min(400,Math.max(240,$('authSheet').clientWidth-48))});
+    box.hidden=false;$('google').hidden=true;
+  }catch(e){console.warn('google button',e);$('gbtn').hidden=true;$('google').hidden=false;}
+}
 function closeAuth(){$('authSheet').classList.remove('on');if(!document.querySelector('.sheet.on'))$('scrim').classList.remove('on');}
 async function signIn(){
   if(!sb){toast('Sign-in isn’t available here.');return;}
