@@ -72,16 +72,21 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px so
 .meter{flex:1;display:flex;align-items:flex-end;gap:10px;margin:26px 0 22px;min-height:90px}
 .meter i{flex:1;height:100%;border-radius:18px 18px 6px 6px;transform-origin:bottom;will-change:transform;transform:scaleY(.5)}
 /* the stage: a soft spotlight falls across the home screen onto your Belter, mid-song on the speaker stack */
-#home{background-image:radial-gradient(60% 36% at 84% 56%,rgba(155,138,255,.28),transparent 72%),linear-gradient(203deg,rgba(251,249,255,.07) 0%,transparent 34%)}
+#home{background-image:radial-gradient(70% 34% at 50% 64%,rgba(155,138,255,.2),transparent 72%),linear-gradient(203deg,rgba(251,249,255,.07) 0%,transparent 34%)}
 .meter{position:relative}
-.meter .home-av{align-self:flex-end;margin:0 6px 8px 8px;transform:rotate(4deg);box-shadow:0 0 0 3px var(--gold),0 0 0 6px var(--ink),0 18px 28px -10px rgba(0,0,0,.6)}
+/* the bars stand on a stage floor: a thin edge of light, and each bar's colour pooling on the floor beneath it */
+.meter::after{content:"";position:absolute;left:-20px;right:-20px;bottom:-1px;height:1px;background:linear-gradient(90deg,transparent,rgba(251,249,255,.28) 18%,rgba(251,249,255,.28) 82%,transparent)}
+.meter i{position:relative;cursor:pointer;touch-action:none;background-image:linear-gradient(90deg,rgba(255,255,255,.16),rgba(255,255,255,0) 38%,rgba(29,22,49,0) 70%,rgba(29,22,49,.14))}
+.meter i::after{content:"";position:absolute;left:-10%;right:-10%;bottom:-26px;height:26px;border-radius:50%;background:none;background-color:inherit;filter:blur(14px);opacity:.55;transform:scaleY(calc(1/var(--s,.5)));transform-origin:top}
 /* a fine paper grain over the flat colours, so they read as printed, not as a flat screen */
 #home::before,#pick::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;opacity:.2;mix-blend-mode:soft-light;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E")}
 #home > *,#pick > *{position:relative;z-index:1}
 #home .tag{font-size:20px;font-weight:700;line-height:1.3;margin-bottom:14px;letter-spacing:-.015em}
 .tonight{display:flex;align-items:center;gap:14px;padding:12px 16px 12px 12px;border-radius:20px;background:var(--ink-2);margin-bottom:12px;text-align:left;width:100%}
-.tonight i{width:44px;height:44px;border-radius:13px;background:var(--mint);flex:none}
+.tonight i{width:46px;height:46px;border-radius:50%;flex:none;background-color:var(--mint);
+  background:radial-gradient(circle,#1d1631 0 7%,var(--c,#3ddc97) 8% 34%,transparent 35%),repeating-radial-gradient(circle,#120e21 0 1.4px,#1b1530 1.4px 2.6px);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.12),0 4px 10px -4px rgba(0,0,0,.5)}
 .tonight span{flex:1;min-width:0}
 .tonight small{display:block;font-size:13px;font-weight:700;color:var(--muted)}
 .tonight b{display:block;font-size:19px;font-weight:800;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -116,7 +121,7 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px so
 .band{position:absolute;left:-8px;right:-8px;top:50%;height:86px;transform:translateY(-50%);border-radius:24px;background:linear-gradient(180deg,rgba(29,22,49,.07),rgba(29,22,49,.13));box-shadow:inset 0 1px 0 rgba(255,255,255,.3),inset 0 -1px 0 rgba(29,22,49,.08),0 14px 26px -16px rgba(29,22,49,.45);pointer-events:none}
 .drum{position:absolute;inset:0;perspective:640px;perspective-origin:50% 50%;overflow:hidden;pointer-events:none;-webkit-mask-image:linear-gradient(transparent,#000 22%,#000 78%,transparent);mask-image:linear-gradient(transparent,#000 22%,#000 78%,transparent)}
 .wi.wide{right:8px}
-.wi{position:absolute;left:12px;right:126px;top:50%;height:84px;margin-top:-42px;transform-origin:50% 50% -150px;backface-visibility:hidden;display:flex;flex-direction:column;justify-content:center;white-space:nowrap;will-change:transform,opacity}
+.wi{position:absolute;left:12px;right:132px;top:50%;height:84px;margin-top:-42px;transform-origin:50% 50% -150px;backface-visibility:hidden;display:flex;flex-direction:column;justify-content:center;white-space:nowrap;will-change:transform,opacity}
 .wi b{letter-spacing:-.045em;line-height:1.05;overflow:hidden;text-overflow:ellipsis;font-weight:800}
 .wi small{display:flex;align-items:center;gap:7px;font-size:15px;font-weight:600;opacity:.72;margin-top:6px}
 .wi small svg{width:13px;height:13px;fill:currentColor;flex:none}
@@ -137,27 +142,27 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px so
 /* Preview: a record sliding out of the edge of the screen, level with the song in focus.
    The label (with the song's name) turns while it plays; the light on the vinyl stays put, like the real thing. */
 #pick{overflow-x:hidden;overflow-y:auto}
-.disc{position:absolute;z-index:2;right:-64px;top:50%;width:156px;height:156px;margin-top:-78px;border-radius:50%;
+.disc{position:absolute;z-index:2;right:-76px;top:50%;width:184px;height:184px;margin-top:-92px;border-radius:50%;
   filter:drop-shadow(-10px 14px 18px rgba(29,22,49,.42));transition:transform .5s cubic-bezier(.22,1,.36,1),opacity .35s ease}
 .disc .rec{width:100%;height:100%;display:block}
 .disc.on{transform:translateX(-12px)}
 .disc:active .rec{transform:scale(.97)}
-.disc[aria-disabled=true]{transform:translateX(110px) rotate(40deg);opacity:0;pointer-events:none}
+.disc[aria-disabled=true]{transform:translateX(130px) rotate(40deg);opacity:0;pointer-events:none}
 .disc .label{transform-box:view-box;transform-origin:0 0}
 .disc.on .label,.disc.wait .label{animation:spin 1.8s linear infinite}
 .disc.wait .label{animation-duration:3.6s}
-.disc .lt{font:800 6.4px/1 var(--display);letter-spacing:.9px;text-transform:uppercase;fill:#1d1631;fill-opacity:.82}
+.disc .lt{font:800 7px/1 var(--display);letter-spacing:.9px;text-transform:uppercase;fill:#1d1631;fill-opacity:.82}
 .disc .lb{font:800 10px/1 var(--display);letter-spacing:-.4px;fill:#1d1631}
-.disc .ls{font:800 5.4px/1 var(--display);letter-spacing:1.2px;fill:#1d1631;fill-opacity:.6}
+.disc .ls{font:800 5.8px/1 var(--display);letter-spacing:1.2px;fill:#1d1631;fill-opacity:.6}
 .disc .prog{fill:none;stroke:#fbf9ff;stroke-opacity:.85;stroke-width:2.4;stroke-linecap:round;stroke-dasharray:0 100;opacity:0;transition:opacity .25s ease}
 .disc.on .prog{opacity:1}
-.disc .pp{position:absolute;left:50%;top:50%;width:50px;height:50px;margin:-25px 0 0 -25px;border-radius:50%;background:#fbf9ff;display:grid;place-items:center;
-  box-shadow:0 0 0 4px rgba(29,22,49,.85),0 6px 14px rgba(0,0,0,.35);transition:transform .2s cubic-bezier(.22,1,.36,1)}
-.disc .pp svg{width:22px;height:22px;fill:#1d1631;margin-left:2px}
+.disc .pp{position:absolute;left:50%;top:50%;width:60px;height:60px;margin:-30px 0 0 -30px;border-radius:50%;display:grid;place-items:center;
+  background:radial-gradient(circle at 34% 28%,#3a2f5c,#1d1631 62%);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 0 0 3px rgba(251,249,255,.9),0 8px 16px rgba(0,0,0,.4);transition:transform .2s cubic-bezier(.22,1,.36,1)}
+.disc .pp svg{width:26px;height:26px;fill:var(--focus,#3ddc97);margin-left:3px}
 .disc.on .pp svg{margin-left:0}
 .disc:active .pp{transform:scale(.92)}
 /* the first few visits, the button sends out a ring now and then, so it reads as something to press */
-.disc.hint .pp::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:2px solid #fbf9ff;animation:ping 2.4s ease-out 3}
+.disc.hint .pp::after{content:"";position:absolute;inset:-3px;border-radius:50%;border:2px solid #fbf9ff;animation:ping 2.4s ease-out 3}
 @keyframes ping{0%{transform:scale(1);opacity:.9}70%,100%{transform:scale(1.8);opacity:0}}
 @media (prefers-reduced-motion: reduce){.disc.hint .pp::after{animation:none}}
 .pvtip{position:absolute;z-index:3;right:104px;top:50%;margin-top:52px;font-size:13px;font-weight:800;background:#1d1631;color:#fbf9ff;padding:6px 11px;border-radius:99px;pointer-events:none;transition:opacity .3s}
@@ -422,7 +427,7 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
 <section id="home" class="screen on" aria-label="Welcome">
   <div class="bar0"><span class="kicker">Karaoke, out loud</span><button class="signin" id="homeSignIn" hidden>Sign in</button><button class="badge" id="homeMe" aria-label="Your profile" hidden><svg class="belter" data-me="1" data-bust="head" viewBox="16 0 88 96"></svg></button></div>
   <h1 class="mark">belt</h1>
-  <div class="meter" id="meter" aria-hidden="true"><i style="background:var(--pink)"></i><i style="background:var(--mint)"></i><i style="background:var(--gold)"></i><i style="background:var(--violet)"></i><i style="background:var(--sky)"></i><span class="av home-av"><svg class="belter" id="homeBelter" data-me="1" viewBox="0 -4 120 140"></svg></span></div>
+  <div class="meter" id="meter" aria-hidden="true" title="Tap the bars"><i style="background-color:var(--pink)"></i><i style="background-color:var(--mint)"></i><i style="background-color:var(--gold)"></i><i style="background-color:var(--violet)"></i><i style="background-color:var(--sky)"></i></div>
   <p class="tag">Pick a song. Sing it loud.</p>
   <button class="tonight" id="tonight"><i id="tonightDot"></i><span><small id="tonightLabel">Tonight’s pick</small><b id="tonightTitle">Jingle Bells</b></span><em>Sing it</em></button>
   <button class="btn" id="go">Start singing</button>
@@ -446,18 +451,17 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
         <defs>
           <radialGradient id="vinylG" r="1"><stop offset=".3" stop-color="#1b1530"/><stop offset=".72" stop-color="#120e21"/><stop offset="1" stop-color="#0c0917"/></radialGradient>
           <linearGradient id="sheenG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".16"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
-          <path id="labelArc" d="M0 27a27 27 0 1 1 .01 0"/><path id="labelLow" d="M-31 0a31 31 0 0 0 62 0"/>
+          <path id="labelArc" d="M0 38a38 38 0 1 1 .01 0"/><path id="labelLow" d="M-42 0a42 42 0 0 0 84 0"/>
         </defs>
         <circle r="99" fill="url(#vinylG)"/>
         <g id="grooves" fill="none" stroke="#fff" stroke-opacity=".045" stroke-width=".55"></g>
-        <circle r="61" fill="none" stroke="#000" stroke-opacity=".45" stroke-width="1.6"/>
+        <circle r="66" fill="none" stroke="#000" stroke-opacity=".45" stroke-width="1.6"/>
         <circle r="79" fill="none" stroke="#000" stroke-opacity=".45" stroke-width="1.4"/>
         <circle r="97.6" fill="none" stroke="#fff" stroke-opacity=".14" stroke-width="1"/>
         <g class="sheen"><path d="M0 0L-38.4-91.5A99 99 0 0 1 9.6-98.5Z" fill="url(#sheenG)" transform="rotate(-38)"/><path d="M0 0L-38.4-91.5A99 99 0 0 1 9.6-98.5Z" fill="url(#sheenG)" transform="rotate(142)"/></g>
         <g class="label">
-          <circle r="37" fill="var(--focus,#3ddc97)"/>
-          <circle r="34.5" fill="none" stroke="#1d1631" stroke-opacity=".28" stroke-width=".6"/>
-          <circle r="16" fill="none" stroke="#1d1631" stroke-opacity=".18" stroke-width=".6"/>
+          <circle r="49" fill="var(--focus,#3ddc97)"/>
+          <circle r="46.5" fill="none" stroke="#1d1631" stroke-opacity=".28" stroke-width=".6"/>
           <text class="lt"><textPath href="#labelArc" startOffset="50%" text-anchor="middle" id="recTitle">Jingle Bells</textPath></text>
           <text class="ls"><textPath href="#labelLow" startOffset="50%" text-anchor="middle">belt   ·   33⅓</textPath></text>
           <circle r="2.6" fill="#0c0917"/>
@@ -994,15 +998,30 @@ function paintMe(){document.querySelectorAll('svg.belter[data-me]').forEach(s=>{
 paintMe();
 
 /* ---------- Home: still wordmark, bars that move like audio ---------- */
-const bars=[...document.querySelectorAll('#meter i')],barH=[.5,.5,.5,.5,.5];
+const bars=[...document.querySelectorAll('#meter i')],barH=[.5,.5,.5,.5,.5],barKick=[0,0,0,0,0];
+// The bars are an instrument: touch one and it sings a note; slide across them for a run.
+const BAR_NOTES=[60,62,64,67,69];
+function pluck(i){
+  ensureCtx();if(ctx.state==='suspended')ctx.resume();
+  const t=ctx.currentTime,f=440*Math.pow(2,(BAR_NOTES[i]-69)/12),o=ctx.createOscillator(),o2=ctx.createOscillator(),g=ctx.createGain(),lp=ctx.createBiquadFilter();
+  o.type='triangle';o.frequency.value=f;o2.type='sine';o2.frequency.value=f*2;lp.type='lowpass';lp.frequency.setValueAtTime(5200,t);lp.frequency.exponentialRampToValueAtTime(900,t+.6);
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.22,t+.008);g.gain.exponentialRampToValueAtTime(.001,t+1.1);
+  const g2=ctx.createGain();g2.gain.value=.25;o.connect(lp);o2.connect(g2);g2.connect(lp);lp.connect(g);g.connect(ctx.destination);o.start(t);o2.start(t);o.stop(t+1.2);o2.stop(t+1.2);
+  barKick[i]=1;
+}
+{let down=false,lastBar=-1;const m=$('meter');
+  const hit=e=>{const el=document.elementFromPoint(e.clientX,e.clientY),i=bars.indexOf(el);if(i>=0&&i!==lastBar){lastBar=i;pluck(i);}};
+  m.addEventListener('pointerdown',e=>{down=true;lastBar=-1;hit(e);});
+  window.addEventListener('pointermove',e=>{if(down)hit(e);});
+  window.addEventListener('pointerup',()=>{down=false;lastBar=-1;});window.addEventListener('pointercancel',()=>{down=false;});}
 function idleFrame(t){
   const homeOn=$('home').classList.contains('on'),mineOn=$('mine').classList.contains('on');
   if(homeOn&&!reduceMotion){
     const pulse=Math.pow(Math.max(0,Math.cos(Math.PI*((t/500)%1))),3);
     bars.forEach((b,i)=>{const g=.42+.17*Math.sin(t/430+i*1.9)+.12*Math.sin(t/710+i*2.7)+.08*Math.sin(t/260+i*4.1)+.16*pulse*(.6+.4*Math.sin(i*1.7+t/2000));
-      barH[i]+=(g-barH[i])*.16;b.style.transform=`scaleY(${Math.max(.12,Math.min(1,barH[i])).toFixed(4)})`;});
+      if(barKick[i]>0){barKick[i]*=.94;}const target=Math.max(g,barKick[i]);barH[i]+=(target-barH[i])*(barKick[i]>.3?.4:.16);const sc=Math.max(.12,Math.min(1,barH[i]));b.style.transform=`scaleY(${sc.toFixed(4)})`;b.style.setProperty('--s',sc.toFixed(3));});
   }
-  if(homeOn){poseBelter($('homeMe').querySelector('svg')._b,0,0,t);const hb=$('homeBelter')._b;if(hb)poseBelter(hb,reduceMotion?.3:Math.min(1,.15+barH[4]*1.1),Math.max(0,Math.sin(t/1400)),t);}
+  if(homeOn){poseBelter($('homeMe').querySelector('svg')._b,0,0,t);}
   if(mineOn)poseBelter($('meBig')._b,Math.max(0,Math.sin(t/300))*.35,0,t);
   if($('castSheet').classList.contains('on'))document.querySelectorAll('#cast svg').forEach((s,i)=>poseBelter(s._b,Math.max(0,Math.sin(t/260+i*1.3))*.8,Math.max(0,Math.sin(t/1300+i)),t));
   requestAnimationFrame(idleFrame);
@@ -1205,7 +1224,7 @@ $('pickBack').onclick=e=>wash(e.currentTarget,()=>{show('home');paintTonight();}
 // A challenge link (letsbelt.com/?c=song.score.name) opens Belt with that song up front and a score to beat.
 let challenge=null;
 function tonightSong(){if(challenge)return challenge.song;const o=CATALOG.find(c=>c.song&&c.song.own);return o?o.song:SONG_BY_ID.jingle;}
-function paintTonight(){const s=tonightSong();$('tonightTitle').textContent=s.title;$('tonightDot').style.background=s.color;
+function paintTonight(){const s=tonightSong();$('tonightTitle').textContent=s.title;$('tonightDot').style.setProperty('--c',s.color);
   $('tonightLabel').textContent=challenge?`${challenge.by} scored ${challenge.score}%. Beat it?`:'Tonight’s pick';}
 $('tonight').onclick=e=>{const s=tonightSong();wash(e.currentTarget,()=>openPicker(CATALOG.find(c=>c.song===s)));setTimeout(()=>openSheet(s),reduceMotion?0:420);};
 $('homeMe').onclick=()=>openMine();
@@ -1325,7 +1344,7 @@ function drawLane(song,t,lvl){
   if(cv.width!==Math.round(w*dpr)||cv.height!==Math.round(h*dpr)){cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);}
   const g=cv.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,w,h);
   const F=(wt,px)=>`${wt} ${px}px "Bricolage Grotesque", system-ui, sans-serif`;
-  const left=40,nowX=left+(w-left)*.24,pps=(w-nowX)/3.4,X=tt=>nowX+(tt-t)*pps,padT=30,padB=26,bh=9,rr=bh/2;
+  const left=40,nowX=left+(w-left)*.09,pps=(w-nowX)/4,X=tt=>nowX+(tt-t)*pps,padT=30,padB=26,bh=9,rr=bh/2;
   let lo=song.minM-1.5,hi=song.maxM+1.5;
   if(song.own){ // the lane never moves: one range for the whole song, set by where nearly all its notes sit
     if(run.rlo==null){const ms=song.notes.map(n=>n.midi).sort((a,b)=>a-b);let a=ms[Math.floor(ms.length*.02)]??song.minM,b=ms[Math.ceil(ms.length*.98)-1]??song.maxM;
