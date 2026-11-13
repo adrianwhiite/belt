@@ -1828,7 +1828,7 @@ function ownFound(){
   const segs=an.segs,ch=segs.length-1;
   const facts=[v&&p.inst?'Singer and band separated':'',
     v?`Melody read from the singer, ${v.notes.length} notes`:'',
-    v&&v.wt?'Every word synced to the singer':`Synced lyrics, ${f.lrc.filter(l=>l.text).length} lines`,
+    v&&(v.wt||v.al!=null)?'Words synced to the singer':`Synced lyrics, ${f.lrc.filter(l=>l.text).length} lines`,
     segs.length?(ch?`Starts in ${keyName(segs[0].k)}, then changes key ${ch===1?'once':ch+' times'}`:`In ${keyName(segs[0].k)}`):'',
     ...((v&&v.ai&&v.ai.problems)||[]).slice(0,2).map(x=>'Heads up: '+x)];
   $('ownFacts').innerHTML=facts.filter(Boolean).map(x=>`<li>${esc(x)}</li>`).join('');
@@ -1843,7 +1843,8 @@ function ownFail(i,msg,e){
 }
 function setupError(e){
   const m=String(e&&e.message||e||'');
-  if(/credit|balance|insufficient|payment/i.test(m))return 'Your AudioShake account is out of credits. Add credits, then try again.';
+  if(/credit|balance|insufficient|payment|billing/i.test(m))return 'Your Replicate account needs billing set up. Add a payment method at replicate.com, then try again.';
+  if(/REPLICATE_API_TOKEN|unauthenticated|invalid token/i.test(m))return 'The Replicate token is missing or wrong. Check the function secrets in Supabase.';
   if(/sign in/i.test(m))return 'Sign in, then add your song again.';
   if(/not set in the function secrets/i.test(m))return 'A key is missing in Supabase. Check the function secrets.';
   if(/unknown action/i.test(m))return 'The Belt server function needs updating. Redeploy belt-ai in Supabase.';
@@ -1879,9 +1880,8 @@ async function finishOwn(job){
   const an=await p.anP,notes=await extractMelody(vb,an.tau),verdict=await p.judgeP;if(job!==ownJob)return;
   if(notes.length<20||(verdict&&verdict.hasLeadVocal===false)){closeOwn();toast('This file has no singing in it. Upload the song the way you normally hear it, with the singer.');return;}
   tick(3);tick(4,'active');
-  const al=alignToMelody(notes,p.found.lrc);let wt=null;
-  try{wt=mapWords(p.found.lrc,await aiAlignTask(sp.task,vb.duration));}catch(e){console.warn('sync',e);}
-  if(job!==ownJob)return;tick(4);tick(5,'active');await pause(400);tick(5);await pause(300);
+  const al=alignToMelody(notes,p.found.lrc),wt=null; // words follow the sung notes, worked out on the device
+  await pause(500);if(job!==ownJob)return;tick(4);tick(5,'active');await pause(400);tick(5);await pause(300);
   p.an=an;p.vocal={file:sp.vocal,vb,notes,al,wt,ai:verdict};p.inst={blob:sp.inst,buf:ib};
   ownFound();
 }
@@ -1949,14 +1949,33 @@ async function aiSplit(file,buf,id){
   try{
     const url=await stage('Sharing the song with AudioShake',async()=>{const su=await sb.storage.from('takes').createSignedUrl(path,3600);if(su.error)throw su.error;return su.data.signedUrl;});
     const {id:task}=await stage('Starting the separation',()=>ai('split_start',{url}));
+    let parts=[];
     for(let i=0;;i++){
-      if(i>100)throw new Error('Separation took too long');
+      if(i>130)throw new Error('Separation took too long');
       await pause(4000);const r=await stage('Checking the separation',()=>ai('split_poll',{id:task}));
-      if(r.status==='completed')break;if(r.status==='error')throw new Error(r.error);
+      if(r.status==='completed'){parts=r.parts||[];break;}if(r.status==='error')throw new Error(r.error);
     }
-    const [vocal,inst]=await stage('Downloading the parts',()=>Promise.all([fetchPart(task,'vocals_lead'),fetchPart(task,'instrumental')]));
-    return {task,vocal,inst};
+    return await stage('Downloading the parts',async()=>{
+      const vocal=await fetchPart(task,'vocals');
+      let inst;try{inst=await fetchPart(task,'instrumental');}
+      catch(e){ // some versions return drums, bass and other separately: mix them into one backing track
+        const rest=parts.filter(k=>k!=='vocals'&&!k.startsWith('no_'));if(!rest.length)throw e;
+        const bufs=await Promise.all(rest.map(async k=>ctx.decodeAudioData(await (await fetchPart(task,k)).arrayBuffer())));
+        inst=mixToWav(bufs);
+      }
+      return {task,vocal,inst};
+    });
   }finally{sb.storage.from('takes').remove([path]);}
+}
+// adds stems together and writes a 16-bit stereo WAV
+function mixToWav(bufs){
+  const sr=bufs[0].sampleRate,n=Math.max(...bufs.map(b=>b.length)),L=new Float32Array(n),R=new Float32Array(n);
+  for(const b of bufs){const l=b.getChannelData(0),r=b.numberOfChannels>1?b.getChannelData(1):l;for(let i=0;i<b.length;i++){L[i]+=l[i];R[i]+=r[i];}}
+  const ab=new ArrayBuffer(44+n*4),v=new DataView(ab),w=(o,t)=>{for(let i=0;i<t.length;i++)v.setUint8(o+i,t.charCodeAt(i));};
+  w(0,'RIFF');v.setUint32(4,36+n*4,true);w(8,'WAVE');w(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,2,true);
+  v.setUint32(24,sr,true);v.setUint32(28,sr*4,true);v.setUint16(32,4,true);v.setUint16(34,16,true);w(36,'data');v.setUint32(40,n*4,true);
+  for(let i=0;i<n;i++){v.setInt16(44+i*4,Math.max(-1,Math.min(1,L[i]))*32767,true);v.setInt16(46+i*4,Math.max(-1,Math.min(1,R[i]))*32767,true);}
+  return new Blob([ab],{type:'audio/wav'});
 }
 async function fetchPart(task,model){
   const {data,error}=await sb.functions.invoke('belt-ai',{body:{action:'fetch_output',id:task,model}});
@@ -2028,7 +2047,7 @@ async function addVocal(file,tgt){
     $('ownChecks').innerHTML=items.map(t=>`<li>${esc(t)}</li>`).join('');tick(0);tick(1,'active');tick(2,'active');
     const backBuf=pend?pendingOwn.buf:(await tracksFor(tgt)).back,guess=pend?pendingOwn.found:tgt;
     const jP=aiJudge(backBuf,vb,notes,guess).then(r=>{verdict=r;}).catch(e=>console.warn('judge',e)).finally(()=>tick(1));
-    const sP=aiSync(file,vb,pend?pendingOwn.id:tgt.id).then(h=>{wt=mapWords(lrc,h);}).catch(e=>console.warn('sync',e)).finally(()=>tick(2));
+    const sP=pause(400).then(()=>tick(2));
     await Promise.all([jP,sP]);if(job!==ownJob)return;tick(3,'active');await pause(400);tick(3);await pause(300);
   }else{
     tick(0);tick(1,'active');await pause(500);tick(1);tick(2,'active');await pause(450);tick(2);await pause(350);if(job!==ownJob)return;

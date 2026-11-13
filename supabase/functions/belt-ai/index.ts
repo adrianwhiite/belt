@@ -1,10 +1,8 @@
 // Belt smart setup. Holds the AI keys so they never ship in the app.
 //   judge        Gemini listens to a clip of the song (and the lead vocal, if given)
-//   split_start  AudioShake separates a full song into lead vocal + instrumental
+//   split_start  Demucs (open source, run on Replicate) separates a song into vocals + the rest
 //   split_poll   checks the separation
 //   fetch_output streams one separated part back to the app
-//   align_start  AudioShake starts word-level lyric alignment on the lead vocal
-//   align_poll   checks the alignment and returns the word timings when done
 // Only signed-in Belt users can call it.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -35,8 +33,6 @@ Deno.serve(async (req) => {
     if (body.action === "split_start") return json(await splitStart(body));
     if (body.action === "split_poll") return json(await splitPoll(body));
     if (body.action === "fetch_output") return await fetchOutput(body);
-    if (body.action === "align_start") return json(await alignStart(body));
-    if (body.action === "align_poll") return json(await alignPoll(body));
     return json({ error: "Unknown action" }, 400);
   } catch (e) {
     return json({ error: String((e as Error)?.message || e) }, 500);
@@ -124,74 +120,52 @@ async function askGemini(key: string, payload: unknown) {
   throw new Error("No Gemini model available: " + lastErr.slice(0, 200));
 }
 
-/* ---------- AudioShake: word-level lyric alignment ---------- */
-const AS = "https://api.audioshake.ai";
+/* ---------- Replicate: Demucs separation, a few cents per song ---------- */
+const RP = "https://api.replicate.com/v1";
+const rpHeaders = () => ({ Authorization: `Bearer ${env("REPLICATE_API_TOKEN")}`, "Content-Type": "application/json" });
+let versionCache = "";
 
-async function getTask(id: string) {
-  const r = await fetch(`${AS}/tasks/${encodeURIComponent(id)}`, { headers: { "x-api-key": env("AUDIOSHAKE_API_KEY") } });
-  const j = await r.json();
-  if (!r.ok) throw new Error(j?.message || `AudioShake error ${r.status}`);
+async function rp(path: string, init?: RequestInit) {
+  const r = await fetch(RP + path, { ...init, headers: rpHeaders() });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j?.detail || j?.title || `Replicate error ${r.status}`);
   return j;
 }
-const linkOf = (t: { output?: { format?: string; link?: string }[] }, fmt?: string) =>
-  ((t.output || []).find((o) => !fmt || o.format === fmt) || (t.output || [])[0])?.link;
+async function demucsVersion() {
+  if (versionCache) return versionCache;
+  const model = Deno.env.get("DEMUCS_MODEL") || "cjwbw/demucs";
+  const m = await rp(`/models/${model}`);
+  versionCache = m?.latest_version?.id;
+  if (!versionCache) throw new Error(`Couldn't find the ${model} model on Replicate`);
+  return versionCache;
+}
 
 async function splitStart({ url }: { url: string }) {
-  const r = await fetch(`${AS}/tasks`, {
+  const version = await demucsVersion();
+  const p = await rp("/predictions", {
     method: "POST",
-    headers: { "Content-Type": "application/json", "x-api-key": env("AUDIOSHAKE_API_KEY") },
-    body: JSON.stringify({ url, targets: [{ model: "vocals_lead", formats: ["mp3"] }, { model: "instrumental", formats: ["mp3"] }] }),
+    body: JSON.stringify({ version, input: { audio: url, stem: "vocals", output_format: "mp3" } }),
   });
-  const j = await r.json();
-  if (!r.ok) throw new Error(j?.message || j?.error?.message || JSON.stringify(j).slice(0, 300));
-  return { id: j.id };
+  return { id: p.id };
 }
 
 async function splitPoll({ id }: { id: string }) {
-  const j = await getTask(id);
-  const ts = j.targets || [];
-  const bad = ts.find((t: { status: string }) => t.status === "error");
-  if (bad) return { status: "error", error: bad.error?.message || "Separation failed" };
-  if (!ts.length || ts.some((t: { status: string }) => t.status !== "completed")) return { status: "processing" };
-  return { status: "completed" };
+  const p = await rp(`/predictions/${encodeURIComponent(id)}`);
+  if (p.status === "succeeded") return { status: "completed", parts: Object.keys(p.output || {}).filter((k) => p.output[k]) };
+  if (p.status === "failed" || p.status === "canceled") return { status: "error", error: p.error || "Separation failed" };
+  return { status: "processing" };
 }
 
+// Streams one part (vocals, no_vocals, drums, bass, other...) from Replicate's file host back to the app.
 async function fetchOutput({ id, model }: { id: string; model: string }) {
-  const j = await getTask(id);
-  const t = (j.targets || []).find((x: { model: string }) => x.model === model);
-  const link = t && linkOf(t, "mp3");
-  if (!link) return json({ error: `No ${model} output yet` }, 404);
+  const p = await rp(`/predictions/${encodeURIComponent(id)}`);
+  const out = p.output || {};
+  const key = model === "instrumental" ? ["no_vocals", "no_stem", "accompaniment", "instrumental"].find((k) => out[k]) : model;
+  const link = key && out[key];
+  if (!link) return json({ error: `No ${model} part`, parts: Object.keys(out).filter((k) => out[k]) }, 404);
+  const host = new URL(link).hostname;
+  if (!/(^|\.)replicate\.(delivery|com)$/.test(host)) return json({ error: "Unexpected file host" }, 400);
   const r = await fetch(link);
   if (!r.ok || !r.body) return json({ error: `Couldn't download the ${model} part` }, 502);
   return new Response(r.body, { headers: { ...CORS, "Content-Type": "application/octet-stream" } });
-}
-
-async function alignStart({ url, taskId, model, language }: { url?: string; taskId?: string; model?: string; language?: string }) {
-  if (!url && taskId) { // align straight from a separated part
-    const j = await getTask(taskId);
-    const t = (j.targets || []).find((x: { model: string }) => x.model === (model || "vocals_lead"));
-    url = t && linkOf(t, "mp3");
-    if (!url) throw new Error("The separated vocal isn't ready yet");
-  }
-  const r = await fetch(`${AS}/tasks`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-api-key": env("AUDIOSHAKE_API_KEY") },
-    body: JSON.stringify({ url, targets: [{ model: "alignment", formats: ["json"], language: language || "en" }] }),
-  });
-  const j = await r.json();
-  if (!r.ok) throw new Error(j?.message || j?.error?.message || JSON.stringify(j).slice(0, 300));
-  return { id: j.id };
-}
-
-async function alignPoll({ id }: { id: string }) {
-  const r = await fetch(`${AS}/tasks/${encodeURIComponent(id)}`, { headers: { "x-api-key": env("AUDIOSHAKE_API_KEY") } });
-  const j = await r.json();
-  if (!r.ok) throw new Error(j?.message || `AudioShake error ${r.status}`);
-  const t = (j.targets || [])[0];
-  if (!t || t.status === "processing") return { status: "processing" };
-  if (t.status === "error") return { status: "error", error: t.error?.message || "Alignment failed" };
-  const out = (t.output || []).find((o: { format?: string }) => o.format === "json") || (t.output || [])[0];
-  if (!out?.link) return { status: "error", error: "Alignment finished without a result file" };
-  const data = await (await fetch(out.link)).json();
-  return { status: "completed", data };
 }
