@@ -728,12 +728,17 @@ function ensureCtx(){
   if(!ctx){const AC=window.AudioContext||window.webkitAudioContext;ctx=new AC({latencyHint:'interactive'});}
   if(ctx.state!=='running')ctx.resume();
 }
-async function getMic(){
-  if(micStream)return true;
+// On the speaker the mic also hears the song, so let the browser cancel the phone's own playback (like a video call).
+// With headphones ("Hear yourself" on) there's nothing to cancel, so the mic stays untouched for the cleanest voice.
+let micAec=null,micNodes=[];
+async function getMic(aec){
+  aec=!!aec;
+  if(micStream&&micAec===aec)return true;
+  if(micStream){micStream.getTracks().forEach(t=>t.stop());micNodes.forEach(n=>{try{n.disconnect();}catch(e){}});micStream=null;micNodes=[];}
   try{
     if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return false;
-    micStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
-    const src=ctx.createMediaStreamSource(micStream);
+    micStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:aec,noiseSuppression:false,autoGainControl:false}});micAec=aec;
+    const src=ctx.createMediaStreamSource(micStream);micNodes.push(src);
     analyser=ctx.createAnalyser();analyser.fftSize=2048;src.connect(analyser);
     // live monitoring chain ("Hear yourself"), silent until switched on
     const hp=ctx.createBiquadFilter();hp.type='highpass';hp.frequency.value=100;
@@ -741,7 +746,7 @@ async function getMic(){
     monitor=ctx.createGain();monitor.gain.value=0;
     const rv=ctx.createConvolver();rv.buffer=impulse();const send=ctx.createGain();send.gain.value=.18;
     src.connect(hp);hp.connect(cmp);cmp.connect(monitor);monitor.connect(ctx.destination);monitor.connect(send);send.connect(rv);rv.connect(ctx.destination);
-    const proc=ctx.createScriptProcessor(4096,1,1),z=ctx.createGain();z.gain.value=0;
+    const proc=ctx.createScriptProcessor(4096,1,1),z=ctx.createGain();z.gain.value=0;micNodes.push(proc,hp,monitor);
     src.connect(proc);proc.connect(z);z.connect(ctx.destination);
     proc.onaudioprocess=e=>{
       if(!run||!run.rec)return;
@@ -1027,7 +1032,7 @@ const inKeyMode=s=>!!s.own&&!s.notes.length;
 const scoreTake=(s,v,sr,until)=>{let f=detectPitch(v,sr,s.own?512:256);if(until!=null)f=f.filter(x=>x.t<=until);return inKeyMode(s)?scoreOwn(s,f):scoreIt(s,f);};
 $('scrim').onclick=()=>{closeSheet();};
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('sheet').classList.contains('on'))closeSheet();});
-$('start').onclick=async()=>{if(current&&current.own&&!current.notes.length){pickVocal(current);return;}ensureCtx();const ok=await getMic();demo=!ok;closeSheet();readySong();};
+$('start').onclick=async()=>{if(current&&current.own&&!current.notes.length){pickVocal(current);return;}ensureCtx();const ok=await getMic(!$('monitor').checked);demo=!ok;closeSheet();readySong();};
 
 /* ---------- Sing ---------- */
 const rider=()=>$('rider')._b;
@@ -1744,7 +1749,12 @@ function buildOwnLines(song){
     lines.push({syl,start:st,end:st+sing,text,t0:st});
   }
   const raw=song.rawNotes||(song.rawNotes=song.notes||[]);
-  if(song.wt)lines.forEach((L,k)=>{const w=song.wt[k];if(!w||w.length!==L.syl.length)return;
+  // a timed line far from where its neighbours put the lyrics is a wrong match (often a repeated chorus): skip it
+  const okW=lines.map((L,k)=>{const w=song.wt&&song.wt[k];return w&&w.length===L.syl.length?w[0][0]-L.t0:null;});
+  okW.forEach((o,k)=>{if(o==null)return;const near=[];for(let j=Math.max(0,k-5);j<=Math.min(okW.length-1,k+5);j++)if(j!==k&&okW[j]!=null)near.push(okW[j]);
+    if(near.length>=2){near.sort((a,b)=>a-b);if(Math.abs(o-near[near.length>>1])>2.5)okW[k]=null;}});
+  let lastAi=-1e9;okW.forEach((o,k)=>{if(o==null)return;const st=lines[k].t0+o;if(st<lastAi-.3)okW[k]=null;else lastAi=st;});
+  if(song.wt)lines.forEach((L,k)=>{const w=song.wt[k];if(!w||w.length!==L.syl.length||okW[k]==null)return;
     L.syl.forEach((x,j)=>{x.start=w[j][0];x.end=Math.max(w[j][0]+.08,w[j][1]);});L.start=L.syl[0].start;L.end=L.syl[L.syl.length-1].end;L.ai=true;});
   // lines the listener timed are anchors: every other line moves with the anchors around it, so drift can't build up
   const anchors=lines.map((L,i)=>L.ai?i:-1).filter(i=>i>=0);
