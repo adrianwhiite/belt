@@ -71,6 +71,14 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px so
 .mark{font-size:clamp(72px,min(38vw,28vh),200px);line-height:.78;letter-spacing:-.06em;margin-top:18px;font-weight:800;font-variation-settings:"opsz" 96}
 .meter{flex:1;display:flex;align-items:flex-end;gap:10px;margin:26px 0 22px;min-height:90px}
 .meter i{flex:1;height:100%;border-radius:18px 18px 6px 6px;transform-origin:bottom;will-change:transform;transform:scaleY(.5)}
+/* the stage: a soft spotlight falls across the home screen onto your Belter, mid-song on the speaker stack */
+#home{background-image:radial-gradient(60% 36% at 84% 56%,rgba(155,138,255,.28),transparent 72%),linear-gradient(203deg,rgba(251,249,255,.07) 0%,transparent 34%)}
+.meter{position:relative}
+.meter .home-av{align-self:flex-end;margin:0 6px 8px 8px;transform:rotate(4deg);box-shadow:0 0 0 3px var(--gold),0 0 0 6px var(--ink),0 18px 28px -10px rgba(0,0,0,.6)}
+/* a fine paper grain over the flat colours, so they read as printed, not as a flat screen */
+#home::before,#pick::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;opacity:.2;mix-blend-mode:soft-light;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E")}
+#home > *,#pick > *{position:relative;z-index:1}
 #home .tag{font-size:20px;font-weight:700;line-height:1.3;margin-bottom:14px;letter-spacing:-.015em}
 .tonight{display:flex;align-items:center;gap:14px;padding:12px 16px 12px 12px;border-radius:20px;background:var(--ink-2);margin-bottom:12px;text-align:left;width:100%}
 .tonight i{width:44px;height:44px;border-radius:13px;background:var(--mint);flex:none}
@@ -85,7 +93,9 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px so
 .fine{font-size:13px;color:var(--muted);text-align:center;margin-top:12px;line-height:1.4}
 
 /* Picker: a type drum; the screen takes the focused song's color */
-#pick{background:var(--focus,#3ddc97);color:var(--ink);transition:background-color .45s ease}
+#pick{background-color:var(--focus,#3ddc97);color:var(--ink);transition:background-color .45s ease;
+  /* light from the top left, falling off toward the bottom right, over whatever colour the song is */
+  background-image:radial-gradient(110% 62% at 12% -6%,rgba(255,255,255,.34),transparent 62%),radial-gradient(95% 60% at 104% 104%,rgba(29,22,49,.26),transparent 68%)}
 .pick-head{display:flex;align-items:center;gap:6px}
 .pick-head .icon{margin-left:-10px}
 .pick-head h2{font-size:30px;font-weight:800;letter-spacing:-.035em;flex:1}
@@ -103,7 +113,7 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px so
 .chips button{font-size:14px;font-weight:700;padding:8px 13px;border-radius:99px;box-shadow:inset 0 0 0 1.5px rgba(29,22,49,.28);flex:none;font-variant-numeric:tabular-nums}
 .chips button[aria-pressed=true]{background:var(--ink);color:var(--paper);box-shadow:none}
 .wheel-wrap{flex:1;position:relative;min-height:0;margin-top:6px}
-.band{position:absolute;left:-8px;right:-8px;top:50%;height:86px;transform:translateY(-50%);border-radius:24px;background:rgba(29,22,49,.1);pointer-events:none}
+.band{position:absolute;left:-8px;right:-8px;top:50%;height:86px;transform:translateY(-50%);border-radius:24px;background:linear-gradient(180deg,rgba(29,22,49,.07),rgba(29,22,49,.13));box-shadow:inset 0 1px 0 rgba(255,255,255,.3),inset 0 -1px 0 rgba(29,22,49,.08),0 14px 26px -16px rgba(29,22,49,.45);pointer-events:none}
 .drum{position:absolute;inset:0;perspective:640px;perspective-origin:50% 50%;overflow:hidden;pointer-events:none;-webkit-mask-image:linear-gradient(transparent,#000 22%,#000 78%,transparent);mask-image:linear-gradient(transparent,#000 22%,#000 78%,transparent)}
 .wi.wide{right:8px}
 .wi{position:absolute;left:12px;right:126px;top:50%;height:84px;margin-top:-42px;transform-origin:50% 50% -150px;backface-visibility:hidden;display:flex;flex-direction:column;justify-content:center;white-space:nowrap;will-change:transform,opacity}
@@ -259,12 +269,13 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px so
 .score span{font-size:20px;font-weight:600;color:var(--muted);max-width:9ch;line-height:1.1}
 .sub{font-size:17px;line-height:1.4;color:var(--muted);margin-top:-4px}
 .graph{background:var(--ink-2);border-radius:22px;padding:14px 14px 10px}
-.graph canvas{display:block;width:100%;height:170px}
+.graph canvas{display:block;width:100%;height:132px;cursor:pointer}
+.graph-h{font-size:17px;font-weight:800;letter-spacing:-.02em;margin:2px 0 12px}
+.graph-line{font-size:15px;font-weight:600;line-height:1.35;min-height:41px;margin-top:10px}
 .legend{display:flex;gap:18px;font-size:14px;color:var(--muted);margin-top:8px}
 .legend > span{display:flex;align-items:center;gap:7px}
-.legend .k1{width:18px;height:8px;border-radius:4px;background:var(--song);opacity:.5}
-.legend .k2{width:8px;height:8px;border-radius:50%;background:var(--paper)}
-.legend .k3{width:8px;height:8px;border-radius:50%;background:#ff7a59}
+.legend i{width:10px;height:10px;border-radius:3px}
+.legend .k1{background:#ffb020}.legend .k2{background:#3ddc97}.legend .k3{background:#ff7a59}
 .player{display:flex;align-items:center;gap:14px}
 .play{width:58px;height:58px;border-radius:50%;background:var(--song);color:var(--ink);display:grid;place-items:center;flex:none}
 .play svg{width:24px;height:24px;fill:currentColor}
@@ -397,7 +408,7 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
 <section id="home" class="screen on" aria-label="Welcome">
   <div class="bar0"><span class="kicker">Karaoke, out loud</span><button class="signin" id="homeSignIn" hidden>Sign in</button><button class="badge" id="homeMe" aria-label="Your profile" hidden><svg class="belter" data-me="1" data-bust="head" viewBox="16 0 88 96"></svg></button></div>
   <h1 class="mark">belt</h1>
-  <div class="meter" id="meter" aria-hidden="true"><i style="background:var(--pink)"></i><i style="background:var(--mint)"></i><i style="background:var(--gold)"></i><i style="background:var(--violet)"></i><i style="background:var(--sky)"></i></div>
+  <div class="meter" id="meter" aria-hidden="true"><i style="background:var(--pink)"></i><i style="background:var(--mint)"></i><i style="background:var(--gold)"></i><i style="background:var(--violet)"></i><i style="background:var(--sky)"></i><span class="av home-av"><svg class="belter" id="homeBelter" data-me="1" viewBox="0 -4 120 140"></svg></span></div>
   <p class="tag">Pick a song. Sing it loud.</p>
   <button class="tonight" id="tonight"><i id="tonightDot"></i><span><small id="tonightLabel">Tonight’s pick</small><b id="tonightTitle">Jingle Bells</b></span><em>Sing it</em></button>
   <button class="btn" id="go">Start singing</button>
@@ -541,8 +552,10 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
   <div class="coach" id="coach" hidden>
     <div class="cards" id="cards"></div>
     <div class="graph">
-      <canvas id="graph" aria-label="Your pitch compared with the melody"></canvas>
-      <div class="legend"><span><i class="k1"></i><span id="legendRef">Melody</span></span><span><i class="k2"></i>On pitch</span><span><i class="k3"></i>Off pitch</span></div>
+      <h3 class="graph-h">Line by line</h3>
+      <canvas id="graph" role="img" aria-label="One bar for each line of the song. Taller bars were more on pitch."></canvas>
+      <p class="graph-line" id="graphLine" aria-live="polite"></p>
+      <div class="legend"><span><i class="k2"></i>On pitch</span><span><i class="k1"></i>Close</span><span><i class="k3"></i>Off</span></div>
     </div>
     <button class="coach-hide" id="coachHide" aria-controls="coach">Hide breakdown</button>
   </div>
@@ -975,7 +988,7 @@ function idleFrame(t){
     bars.forEach((b,i)=>{const g=.42+.17*Math.sin(t/430+i*1.9)+.12*Math.sin(t/710+i*2.7)+.08*Math.sin(t/260+i*4.1)+.16*pulse*(.6+.4*Math.sin(i*1.7+t/2000));
       barH[i]+=(g-barH[i])*.16;b.style.transform=`scaleY(${Math.max(.12,Math.min(1,barH[i])).toFixed(4)})`;});
   }
-  if(homeOn)poseBelter($('homeMe').querySelector('svg')._b,0,0,t);
+  if(homeOn){poseBelter($('homeMe').querySelector('svg')._b,0,0,t);const hb=$('homeBelter')._b;if(hb)poseBelter(hb,reduceMotion?.3:Math.min(1,.15+barH[4]*1.1),Math.max(0,Math.sin(t/1400)),t);}
   if(mineOn)poseBelter($('meBig')._b,Math.max(0,Math.sin(t/300))*.35,0,t);
   if($('castSheet').classList.contains('on'))document.querySelectorAll('#cast svg').forEach((s,i)=>poseBelter(s._b,Math.max(0,Math.sin(t/260+i*1.3))*.8,Math.max(0,Math.sin(t/1300+i)),t));
   requestAnimationFrame(idleFrame);
@@ -1295,11 +1308,10 @@ function drawLane(song,t,lvl){
   const F=(wt,px)=>`${wt} ${px}px "Bricolage Grotesque", system-ui, sans-serif`;
   const left=40,nowX=left+(w-left)*.24,pps=(w-nowX)/3.4,X=tt=>nowX+(tt-t)*pps,padT=30,padB=26,bh=9,rr=bh/2;
   let lo=song.minM-1.5,hi=song.maxM+1.5;
-  if(song.own){ // long songs: the lane zooms to the notes around you
-    const vis=song.notes.filter(n=>n.t+n.d>t-1.2&&n.t<t+3);let a=run.rlo??song.minM,b=run.rhi??song.maxM;
-    if(vis.length){a=Math.min(...vis.map(n=>n.midi));b=Math.max(...vis.map(n=>n.midi));}
-    if(b-a<8){const c=(a+b)/2;a=c-4;b=c+4;}
-    run.rlo=run.rlo==null?a:run.rlo+(a-run.rlo)*.06;run.rhi=run.rhi==null?b:run.rhi+(b-run.rhi)*.06;lo=run.rlo-1.5;hi=run.rhi+1.5;
+  if(song.own){ // the lane never moves: one range for the whole song, set by where nearly all its notes sit
+    if(run.rlo==null){const ms=song.notes.map(n=>n.midi).sort((a,b)=>a-b);let a=ms[Math.floor(ms.length*.02)]??song.minM,b=ms[Math.ceil(ms.length*.98)-1]??song.maxM;
+      if(b-a<9){const c=(a+b)/2;a=c-4.5;b=c+4.5;}run.rlo=a;run.rhi=b;}
+    lo=run.rlo-1.5;hi=run.rhi+1.5;
   }
   const Y=m=>padT+(1-(m-lo)/(hi-lo))*(h-padT-padB);
   for(let k=0;k<=4;k++){const y=padT+k/4*(h-padT-padB);g.fillStyle='rgba(29,22,49,.08)';g.fillRect(left,y-.5,w-left-8,1);}
@@ -1307,7 +1319,7 @@ function drawLane(song,t,lvl){
   g.save();g.beginPath();g.rect(left,0,w-left,h);g.clip();
   const rnd=(x,y,wd,ht)=>{g.beginPath();if(g.roundRect)g.roundRect(x,y,wd,ht,Math.min(rr,wd/2));else g.rect(x,y,wd,ht);};
   for(const n of song.notes){
-    const x0=X(n.t)+1.5,x1=Math.max(x0+3,X(n.t+n.d)-1.5);if(x1<left||x0>w)continue;const y=Y(n.midi)-rr;
+    const x0=X(n.t)+1.5,x1=Math.max(x0+3,X(n.t+n.d)-1.5);if(x1<left||x0>w)continue;const y=Y(Math.max(lo+.6,Math.min(hi-.6,n.midi)))-rr;
     const past=x1<=nowX,active=x0<=nowX&&x1>nowX;
     if(past){const st=run.ns.get(n),hit=st&&st.v>=2&&st.h/st.v>=.5;g.fillStyle=hit?'rgba(29,22,49,.8)':'rgba(29,22,49,.2)';rnd(x0,y,x1-x0,bh);g.fill();}
     else{
@@ -1316,23 +1328,31 @@ function drawLane(song,t,lvl){
     }
     if(n.syl&&x1-x0>4){g.fillStyle=active?INK:'rgba(29,22,49,.55)';g.font=F(active?800:600,10.5);g.textBaseline='top';g.fillText(n.syl,x0+1,y+bh+4);}
   }
-  // your voice, crisp
-  g.strokeStyle=INK;g.lineWidth=2;g.lineCap='round';g.lineJoin='round';g.beginPath();
-  let seg=[];const flush=()=>{if(seg.length>1){g.moveTo(seg[0][0],seg[0][1]);for(let i=1;i<seg.length-1;i++){const mx=(seg[i][0]+seg[i+1][0])/2,my=(seg[i][1]+seg[i+1][1])/2;g.quadraticCurveTo(seg[i][0],seg[i][1],mx,my);}const e=seg[seg.length-1];g.lineTo(e[0],e[1]);}seg=[];};
-  let prev=null;
-  for(const p of run.trail){
-    if(p.m==null||(prev&&(p.t-prev.t>.12||Math.abs(p.m-prev.m)>3)))flush();
-    if(p.m==null){prev=null;continue;}
-    seg.push([X(p.t),Y(Math.max(lo,Math.min(hi,p.m)))]);prev=p;
+  // your voice: one smooth line that fades out behind you. The wobble of a real voice is averaged away for the drawing only.
+  const segs=[];{let cur=null,prev=null;
+    for(const p of run.trail){
+      if(p.m==null||(prev&&(p.t-prev.t>.12||Math.abs(p.m-prev.m)>3))){cur=null;}
+      if(p.m==null){prev=null;continue;}
+      if(!cur){cur=[];segs.push(cur);}cur.push([X(p.t),Y(Math.max(lo,Math.min(hi,p.m)))]);prev=p;
+    }}
+  let tipY=null;
+  for(const sg of segs){
+    for(let pass=0;pass<2;pass++){const ys=sg.map(q=>q[1]);for(let i=0;i<sg.length;i++){const r=Math.min(5,i,sg.length-1-i);let sum=0;for(let k=i-r;k<=i+r;k++)sum+=ys[k];sg[i][1]=sum/(2*r+1);}}
   }
-  flush();g.stroke();g.restore();
+  if(segs.length){const e=segs[segs.length-1],lastP=run.trail[run.trail.length-1];if(lastP&&lastP.m!=null){ // ease the last stretch onto the live dot
+    tipY=e[e.length-1][1];}}
+  const fade=g.createLinearGradient(X(t-1.5),0,nowX,0);fade.addColorStop(0,'rgba(29,22,49,0)');fade.addColorStop(.45,'rgba(29,22,49,.55)');fade.addColorStop(1,'rgba(29,22,49,1)');
+  g.strokeStyle=fade;g.lineWidth=3;g.lineCap='round';g.lineJoin='round';g.beginPath();
+  for(const sg of segs){if(sg.length<2)continue;g.moveTo(sg[0][0],sg[0][1]);for(let i=1;i<sg.length-1;i++){const mx=(sg[i][0]+sg[i+1][0])/2,my=(sg[i][1]+sg[i+1][1])/2;g.quadraticCurveTo(sg[i][0],sg[i][1],mx,my);}const e=sg[sg.length-1];g.lineTo(e[0],e[1]);}
+  g.stroke();g.restore();
   // now line with a small cap
   g.fillStyle='rgba(29,22,49,.7)';g.fillRect(nowX-.5,padT-6,1,h-padT-padB+12);
   g.beginPath();g.moveTo(nowX-4,padT-8);g.lineTo(nowX+4,padT-8);g.lineTo(nowX,padT-3);g.fill();
   // where you are: a flat ring
   const last=run.trail[run.trail.length-1];
-  if(last&&last.m!=null){const y=Y(Math.max(lo,Math.min(hi,last.m))),r=6+Math.min(3,lvl*30);g.fillStyle='#fbf9ff';g.beginPath();g.arc(nowX,y,r,0,7);g.fill();g.strokeStyle=INK;g.lineWidth=1.6;g.stroke();}
-  else{const y=Y(run.lastM??(lo+hi)/2);g.strokeStyle='rgba(29,22,49,.35)';g.lineWidth=1.6;g.beginPath();g.arc(nowX,y,6,0,7);g.stroke();}
+  if(last&&last.m!=null){const yRaw=Y(Math.max(lo,Math.min(hi,last.m)));run.dotY=run.dotY==null||Math.abs(yRaw-run.dotY)>40?yRaw:run.dotY+(yRaw-run.dotY)*.35;
+    const y=run.dotY,r=6+Math.min(3,lvl*30);if(tipY!=null){g.strokeStyle=INK;g.lineWidth=3;g.lineCap='round';g.beginPath();g.moveTo(nowX-1,tipY);g.lineTo(nowX,y);g.stroke();}g.fillStyle='#fbf9ff';g.beginPath();g.arc(nowX,y,r,0,7);g.fill();g.strokeStyle=INK;g.lineWidth=1.6;g.stroke();}
+  else{run.dotY=null;const y=Y(Math.max(lo,Math.min(hi,run.lastM??(lo+hi)/2)));g.strokeStyle='rgba(29,22,49,.35)';g.lineWidth=1.6;g.beginPath();g.arc(nowX,y,6,0,7);g.stroke();}
   if(run.range){g.fillStyle='rgba(29,22,49,.55)';g.font=F(700,10);g.textBaseline='alphabetic';g.fillText(run.range,w-g.measureText(run.range).width-12,h-8);}
   // grade chip: dark plate, own color and own shape (star, double tick, tick)
   if(run.pop){const age=(performance.now()-run.pop.t0)/900;if(age>1)run.pop=null;else{
@@ -1613,7 +1633,7 @@ function setCoach(open,remember){
   $('coach').hidden=!open;$('coachBtn').setAttribute('aria-expanded',open);
   if(remember!==false)setCoachPref(open);
   if(!open)return;
-  $('legendRef').textContent=inKeyMode(last.song)?'Lyrics':'Melody';
+  gSel=null;
   renderCards();drawGraph(null);
 }
 $('coachBtn').onclick=()=>{setCoach(true);$('coach').scrollIntoView({behavior:'smooth',block:'start'});};
@@ -1656,23 +1676,42 @@ function renderCards(){
   $('cards').innerHTML=notes.map((n,i)=>`<div class="card" style="--c:${n.c}"><span class="card-tag">${esc(n.tag)}</span><p class="card-line">${esc(n.line)}</p><p class="card-sub">${esc(n.sub)}</p>${n.m?`<button class="card-hear" data-i="${i}">Hear it</button>`:''}</div>`).join('');
 }
 $('cards').onclick=e=>{const b=e.target.closest('.card-hear');if(!b)return;const m=last.booth[+b.dataset.i].m;playMix(Math.max(0,m.t0-.4),m.t1+.6);};
+// Line by line: one bar per line of the song you reached. Taller and greener means more of that line was on pitch.
+// Tap a bar to see the words and hear yourself sing it.
+let gSel=null;
+function lineStats(){
+  const {song,sc}=last,end=last.until??1e9,out=[];let i=0;const pts=sc.pts;
+  for(const L of song.lines){if(L.start>end)break;
+    while(i<pts.length&&pts[i].t<L.start-.05)i++;let n=0,ok=0,j=i;
+    for(;j<pts.length&&pts[j].t<=L.end+.3;j++){n++;if(pts[j].ok)ok++;}
+    const need=Math.max(4,(Math.min(L.end,end)-L.start)*5); // sung at least a little of it
+    out.push({L,sung:n>=need,pct:n?ok/n:0});}
+  return out;
+}
+const lineCol=x=>!x.sung?'rgba(251,249,255,.16)':x.pct>=.7?'#3ddc97':x.pct>=.4?'#ffb020':'#ff7a59';
 function drawGraph(playT){
-  const {song,sc}=last,cv=$('graph'),dpr=window.devicePixelRatio||1;
+  const cv=$('graph'),dpr=window.devicePixelRatio||1;
   const w=cv.clientWidth,h=cv.clientHeight;if(w<20||h<20)return; // not on screen yet
   cv.width=w*dpr;cv.height=h*dpr;
   const g=cv.getContext('2d');g.scale(dpr,dpr);g.clearRect(0,0,w,h);
-  const own=inKeyMode(song),t0=song.firstT-.3,t1=Math.min(song.lastEnd,last.until??1e9)+.3;
-  let ms=own?sc.pts.map(p=>p.m).sort((a,b)=>a-b):song.notes.map(n=>n.midi);
-  if(own)ms=ms.length?[ms[Math.floor(ms.length*.03)],ms[Math.floor(ms.length*.97)]]:[57,69];
-  const lo=Math.min(...ms)-3,hi=Math.max(...ms)+3;
-  const X=t=>(t-t0)/(t1-t0)*w,Y=m=>h-6-(m-lo)/(hi-lo)*(h-12),row=(h-12)/(hi-lo);
-  g.fillStyle=song.color;g.globalAlpha=own?.16:.42;
-  if(own)for(const L of song.lines){const x=X(L.start);g.fillRect(x,0,Math.max(2,X(L.end)-x-1),h);}
-  for(const n of song.notes){const x=X(n.t),wd=Math.max(3,X(n.t+n.d)-x-2),y=Y(n.midi)-row*.45;g.beginPath();g.roundRect?g.roundRect(x,y,wd,row*.9,Math.min(4,row*.45)):g.rect(x,y,wd,row*.9);g.fill();}
-  g.globalAlpha=1;
-  for(const p of sc.pts){const m=Math.max(lo,Math.min(hi,p.m));g.fillStyle=p.ok?'#fbf9ff':'#ff7a59';g.beginPath();g.arc(X(p.t),Y(m),1.7,0,Math.PI*2);g.fill();}
-  if(playT!=null&&playT>=t0&&playT<=t1){g.strokeStyle='#fbf9ff';g.globalAlpha=.8;g.lineWidth=2;g.beginPath();g.moveTo(X(playT),0);g.lineTo(X(playT),h);g.stroke();g.globalAlpha=1;}
+  const st=last.lineStats||(last.lineStats=lineStats()),n=st.length;if(!n)return;
+  const gap=n>36?1.5:n>18?3:5,bw=Math.min(34,(w-gap*(n-1))/n),x0=(w-(bw*n+gap*(n-1)))/2,base=h-4,top=8;
+  g.fillStyle='rgba(251,249,255,.1)';g.fillRect(0,top,w,1);g.fillRect(0,top+(base-top)/2,w,1);
+  let playing=-1;if(playT!=null)playing=st.findIndex(x=>playT>=x.L.start-.3&&playT<=x.L.end+.3);
+  st.forEach((x,i)=>{const bh=x.sung?Math.max(8,x.pct*(base-top)):6,X=x0+i*(bw+gap),on=i===gSel||i===playing;
+    g.globalAlpha=gSel!=null&&!on&&playing<0?.45:1;g.fillStyle=lineCol(x);g.beginPath();const r=Math.min(6,bw/2);g.roundRect?g.roundRect(X,base-bh,bw,bh,[r,r,2,2]):g.rect(X,base-bh,bw,bh);g.fill();
+    if(on){g.globalAlpha=1;g.fillStyle='#fbf9ff';g.beginPath();g.arc(X+bw/2,Math.max(4,base-bh-7),2.5,0,7);g.fill();}});
+  g.globalAlpha=1;cv._geo={x0,bw,gap,n};
+  const tips=st.filter(x=>x.sung),good=tips.filter(x=>x.pct>=.7).length;
+  if(gSel==null)$('graphLine').textContent=tips.length?`${good} of ${st.length} lines on pitch. Tap a bar to hear that line.`:'Sing a line or two and they’ll show up here.';
 }
+$('graph').onclick=e=>{
+  const cv=$('graph'),q=cv._geo,st=last&&last.lineStats;if(!q||!st)return;
+  const x=e.clientX-cv.getBoundingClientRect().left,i=Math.max(0,Math.min(q.n-1,Math.floor((x-q.x0+q.gap/2)/(q.bw+q.gap))));
+  gSel=i;const s1=st[i],words=s1.L.text.trim();
+  $('graphLine').textContent=`\u201c${words.length>44?words.slice(0,43)+'\u2026':words}\u201d ${s1.sung?Math.round(s1.pct*100)+'% on pitch':'you didn’t sing this one'}`;
+  playMix(Math.max(0,s1.L.start-.4),s1.L.end+.6);
+};
 function impulse(){
   const sr=ctx.sampleRate,len=Math.floor(sr*1.6),b=ctx.createBuffer(2,len,sr);
   for(let c=0;c<2;c++){const d=b.getChannelData(c);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3);}
@@ -2060,7 +2099,7 @@ function ownLive(song,t){
   }else if(run.fake){const f=run.fake.find(f=>t>=f.t0&&t<f.t1);if(f){pm=f.m+Math.sin(t*6.5)*.15;lvl=.06;}}
   if(pm!=null){
     run.sm=run.sm==null||Math.abs(pm-run.sm)>1.5?pm:run.sm+(pm-run.sm)*.5;
-    const mm=run.sm;run.center=run.center==null?mm:run.center+(mm-run.center)*.03;
+    const mm=run.sm;if(run.center==null)run.center=mm; // the lane stays put once it knows where your voice sits
     run.trail.push({t,m:mm,ok:inL?Math.abs(inKey(song,t,mm))<=OK_OWN:null});run.lastM=mm;
   }else{run.sm=null;run.trail.push({t,m:null,ok:null});}
   while(run.trail.length&&run.trail[0].t<t-1.5)run.trail.shift();
