@@ -151,8 +151,18 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px so
 .disc .ls{font:800 5.4px/1 var(--display);letter-spacing:1.2px;fill:#1d1631;fill-opacity:.6}
 .disc .prog{fill:none;stroke:#fbf9ff;stroke-opacity:.85;stroke-width:2.4;stroke-linecap:round;stroke-dasharray:0 100;opacity:0;transition:opacity .25s ease}
 .disc.on .prog{opacity:1}
-.disc .pp{position:absolute;left:50%;top:50%;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;background:#1d1631;display:grid;place-items:center;box-shadow:0 0 0 2px rgba(251,249,255,.18)}
-.disc .pp svg{width:13px;height:13px;fill:#fbf9ff}
+.disc .pp{position:absolute;left:50%;top:50%;width:50px;height:50px;margin:-25px 0 0 -25px;border-radius:50%;background:#fbf9ff;display:grid;place-items:center;
+  box-shadow:0 0 0 4px rgba(29,22,49,.85),0 6px 14px rgba(0,0,0,.35);transition:transform .2s cubic-bezier(.22,1,.36,1)}
+.disc .pp svg{width:22px;height:22px;fill:#1d1631;margin-left:2px}
+.disc.on .pp svg{margin-left:0}
+.disc:active .pp{transform:scale(.92)}
+/* the first few visits, the button sends out a ring now and then, so it reads as something to press */
+.disc.hint .pp::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:2px solid #fbf9ff;animation:ping 2.4s ease-out 3}
+@keyframes ping{0%{transform:scale(1);opacity:.9}70%,100%{transform:scale(1.8);opacity:0}}
+@media (prefers-reduced-motion: reduce){.disc.hint .pp::after{animation:none}}
+.pvtip{position:absolute;z-index:3;right:104px;top:50%;margin-top:52px;font-size:13px;font-weight:800;background:#1d1631;color:#fbf9ff;padding:6px 11px;border-radius:99px;pointer-events:none;transition:opacity .3s}
+.pvtip::after{content:"";position:absolute;right:-5px;top:-4px;width:12px;height:12px;background:#1d1631;transform:rotate(45deg);border-radius:2px}
+.pvtip[hidden]{display:block;opacity:0}
 @keyframes spin{to{transform:rotate(1turn)}}
 @media (prefers-reduced-motion: reduce){.disc.on .label,.disc.wait .label{animation:none}}
 .own-btn{justify-self:center;font-size:15px;font-weight:700;padding:9px 16px;border-radius:99px;color:var(--ink)}
@@ -283,7 +293,7 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px so
 .bal div{display:flex;justify-content:space-between}
 input[type=range]{width:100%;accent-color:var(--song);height:28px}
 /* Your numbers, always on the page: big score in the song's color, two fun facts beside it */
-.rstats{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:8px}
+.rstats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .rs{border-radius:20px;padding:14px 12px 12px;min-height:96px;display:flex;flex-direction:column;justify-content:space-between;background:var(--ink-2)}
 .rs b{font-size:30px;font-weight:800;letter-spacing:-.04em;line-height:1;font-variant-numeric:tabular-nums;white-space:nowrap}
 .rs > span{font-size:13px;font-weight:700;color:var(--muted);margin-top:10px}
@@ -291,7 +301,11 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
 .rs-score b{font-size:44px;letter-spacing:-.06em}
 .rs-score b small{font-size:22px;letter-spacing:-.02em;margin-left:1px}
 .rs-score > span{color:rgba(29,22,49,.72)}
-.rs-top b{color:var(--gold)}.rs-held b{color:var(--sky)}
+.rs-crowd b{color:var(--gold);font-size:26px;line-height:1.02;white-space:normal;letter-spacing:-.035em}
+.rs-line{grid-column:1/-1;min-height:0;gap:6px;justify-content:flex-start}
+.rs-line > span{margin:0}
+.rs-line b{color:var(--paper);font-size:22px;line-height:1.2;white-space:normal;letter-spacing:-.025em}
+.rs-line em{font-style:normal;font-size:14px;font-weight:600;color:var(--sky)}
 .rstats.go .rs{animation:rsIn .55s cubic-bezier(.22,1,.36,1) backwards}
 .rstats.go .rs:nth-child(2){animation-delay:.08s}.rstats.go .rs:nth-child(3){animation-delay:.16s}
 @keyframes rsIn{from{opacity:0;transform:translateY(10px) scale(.96)}}
@@ -521,8 +535,8 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
   </div>
   <div class="rstats" id="rstats">
     <div class="rs rs-score"><b><span id="rsScore">0</span><small>%</small></b><span id="rsScoreL">On pitch</span></div>
-    <div class="rs rs-top"><b id="rsTop">–</b><span>Top note</span></div>
-    <div class="rs rs-held"><b id="rsHeld">–</b><span id="rsHeldL">Longest note</span></div>
+    <div class="rs rs-crowd"><b id="rsCrowd">–</b><span>The crowd</span></div>
+    <div class="rs rs-line" id="rsLineBox"><span>Your best line</span><b id="rsLine">–</b><em id="rsLineSub"></em></div>
   </div>
   <div class="mytake">
     <div class="player">
@@ -1127,6 +1141,7 @@ function choose(){const c=VIEW[focusIdx];if(c&&c.song){stopPreview();openSheet(c
 function paintPreview(c){
   const d=$('preview'),ok=!!(c&&c.song);
   if(ok){const t=c.title.length>22?c.title.slice(0,21)+'…':c.title;$('recTitle').textContent=t;}d.setAttribute('aria-disabled',String(!ok));
+  if(+pref('pvUsed','0')<2)queueMicrotask(previewHint);
   d.setAttribute('aria-label',!ok?'No preview for this song yet':pv.on?`Stop the preview of ${c.title}`:`Play a preview of ${c.title}`);
 }
 {const g=$('grooves');let h='';for(let r=40;r<97;r+=1.35)h+=`<circle r="${r.toFixed(2)}" stroke-opacity="${(.03+.03*Math.abs(Math.sin(r*.7))).toFixed(3)}"/>`;g.innerHTML=h;}
@@ -1162,8 +1177,12 @@ function followPreview(){
   if(pv.song===c.song)return;
   pv.timer=setTimeout(()=>{if(pv.on&&VIEW[focusIdx]===c)playPreview(c.song);},280);
 }
+// until someone has played a preview twice, show a little hint by the record
+function previewHint(){const n=+pref('pvUsed','0'),show=n<2&&$('preview').getAttribute('aria-disabled')!=='true'&&!pv.on;
+  $('preview').classList.toggle('hint',show);}
 $('preview').onclick=()=>{
   const c=VIEW[focusIdx];if(!c||!c.song)return;
+  if(!pv.on){setPref('pvUsed',String(+pref('pvUsed','0')+1));$('preview').classList.remove('hint');}
   if(pv.on){stopPreview();return;}
   pv.on=true;const d=$('preview');d.classList.add('on');d.setAttribute('aria-pressed','true');previewIcon(true);paintPreview(c);playPreview(c.song);
 };
@@ -1576,14 +1595,19 @@ $('shareScore').onclick=async()=>{
   }catch(e){if(!(e&&e.name==='AbortError'))await copy();}
 };
 // The numbers: score counts up, then your top note and longest note (or how much you sang).
+const CROWD=[[90,'Standing ovation'],[78,'Lighters up'],[62,'Big cheers'],[45,'Warm applause'],[25,'Clapping along'],[0,'Brave first try']];
 function paintStats(quiet){
   const {song,sc}=last,own=inKeyMode(song),key=sc.key||0,box=$('rstats');
-  $('rsScoreL').textContent=own?'In tune':'On pitch';
-  const sung=sc.pts.filter(p=>p.ok).map(p=>p.m+key);
-  $('rsTop').textContent=!quiet&&sung.length>=4?noteName(Math.max(...sung)):'–';
-  const held=own?null:sc.per.filter(o=>o.hits>=4).sort((a,b)=>b.n.d-a.n.d)[0];
-  if(held){$('rsHeldL').textContent='Longest note';$('rsHeld').textContent=quiet?'–':held.n.d.toFixed(1)+'s';}
-  else{$('rsHeldL').textContent='Sung through';$('rsHeld').textContent=quiet?'–':Math.round(sc.cover*100)+'%';}
+  $('rsScoreL').textContent='Notes hit';
+  // how a room full of people would react, in words anyone gets
+  const pc=Math.round(sc.acc*100);
+  $('rsCrowd').textContent=quiet?'Still waiting':CROWD.find(c=>pc>=c[0])[1];
+  // your best line, quoted back to you
+  const st=last.lineStats||(last.lineStats=lineStats()),sungL=st.filter(x=>x.sung),best=sungL.slice().sort((a,b)=>b.pct-a.pct)[0];
+  $('rsLineBox').hidden=quiet||!best;
+  if(best){const w=best.L.text.trim().replace(/[,.;:]+$/,''),p=Math.round(best.pct*100);
+    $('rsLine').textContent='\u201c'+(w.length>60?w.slice(0,59)+'\u2026':w)+'\u201d';
+    $('rsLineSub').textContent=p>=95?'Every note, right on':p>=70?`${p}% on pitch. Sing them all like this`:`Your strongest moment, ${p}% on pitch`;}
   const target=quiet?0:Math.round(sc.acc*100),el=$('rsScore'),t0=performance.now();
   box.classList.remove('go');void box.offsetWidth;if(!reduceMotion)box.classList.add('go');
   if(quiet){el.textContent='–';return;}
