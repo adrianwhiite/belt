@@ -95,6 +95,26 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px so
 .facts .lvl i:nth-child(1){height:7px}.facts .lvl i:nth-child(2){height:11px}.facts .lvl i:nth-child(3){height:14px}.facts .lvl i:nth-child(4){height:18px}.facts .lvl i:nth-child(5){height:22px}
 .facts .lvl i.on{background:var(--ink)}
 .pick-foot{display:grid;gap:8px}
+.go-row{display:flex;gap:10px;align-items:center}
+.go-row .btn{flex:1;min-width:0;width:auto}
+/* Preview: a little record. It spins while the song plays; the ring fills as the clip runs. */
+.disc{flex:none;width:58px;height:58px;border-radius:50%;position:relative;display:grid;place-items:center;transition:transform .12s ease,opacity .2s ease}
+.disc:active{transform:scale(.94)}
+.disc[aria-disabled=true]{opacity:.35;cursor:default}
+.disc .ring{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+.disc .ring circle{fill:none;stroke:rgba(29,22,49,.2);stroke-width:2.5}
+.disc .ring .prog{stroke:var(--ink);stroke-linecap:round;stroke-dasharray:0 100;opacity:0;transition:opacity .2s ease}
+.disc.on .ring .prog{opacity:1}
+.disc .vinyl{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;
+  background:conic-gradient(from 40deg,transparent 0 9%,rgba(255,255,255,.16) 13%,transparent 18% 59%,rgba(255,255,255,.1) 63%,transparent 68%),
+    repeating-radial-gradient(circle,var(--ink) 0 1.6px,var(--ink-2) 1.6px 2.6px);
+  box-shadow:0 1px 0 rgba(255,255,255,.25) inset}
+.disc .vinyl i{width:20px;height:20px;border-radius:50%;background:var(--focus,#3ddc97);box-shadow:0 0 0 1.5px rgba(29,22,49,.5) inset}
+.disc .glyph{position:absolute;width:14px;height:14px;fill:var(--ink)}
+.disc.on .vinyl{animation:spin 1.8s linear infinite}
+.disc.wait .vinyl{animation:spin 1.8s linear infinite;opacity:.7}
+@keyframes spin{to{transform:rotate(1turn)}}
+@media (prefers-reduced-motion: reduce){.disc.on .vinyl,.disc.wait .vinyl{animation:none}}
 .own-btn{justify-self:center;font-size:15px;font-weight:700;padding:9px 16px;border-radius:99px;color:var(--ink)}
 
 /* Sheets */
@@ -346,7 +366,14 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
     <div><b id="fBest">–</b><span>Your best</span></div>
   </div>
   <div class="pick-foot">
-    <button class="btn ink" id="pickGo">Sing it</button>
+    <div class="go-row">
+      <button class="disc" id="preview" type="button" aria-pressed="false" aria-label="Play a preview">
+        <svg class="ring" viewBox="0 0 58 58" aria-hidden="true"><circle cx="29" cy="29" r="27"/><circle class="prog" id="previewProg" cx="29" cy="29" r="27" pathLength="100"/></svg>
+        <span class="vinyl" aria-hidden="true"><i></i></span>
+        <svg class="glyph" viewBox="0 0 24 24" aria-hidden="true"><path id="previewIcon" d="M9 6.5v11l9-5.5z"/></svg>
+      </button>
+      <button class="btn ink" id="pickGo">Sing it</button>
+    </div>
     <button class="own-btn" id="ownBtn">Use your own song</button>
     <input type="file" id="ownFile" accept="audio/*,video/mp4,video/quicktime,video/x-m4v,.mp3,.m4a,.aac,.wav,.flac,.ogg,.mp4,.m4v,.mov" hidden>
     <input type="file" id="vocalFile" accept="audio/*,.mp3,.m4a,.aac,.wav,.flac,.ogg" hidden>
@@ -721,9 +748,10 @@ function fakeVoice(song,sr){
 
 /* ---------- App state ---------- */
 const $=id=>document.getElementById(id);
+const PV_LEN=15,pv={on:false,song:null,nodes:null,t0:0,raf:0,tok:0,timer:0}; // song previews in the picker
 let ctx=null,micStream=null,analyser=null,monitor=null,current=null,tracks=null,run=null,demo=false,last=null,mix=null;
 const cache={};
-function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id));}
+function show(id){if(id!=='pick'&&pv.on)stopPreview();document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id));}
 function ensureCtx(){
   if(!ctx){const AC=window.AudioContext||window.webkitAudioContext;ctx=new AC({latencyHint:'interactive'});}
   if(ctx.state!=='running')ctx.resume();
@@ -952,6 +980,8 @@ function paintWheel(){
     wheel.setAttribute('aria-activedescendant','opt'+idx);
     setFacts(c);
     const go=$('pickGo');go.disabled=!c.song;go.textContent=c.song?`Sing ${c.title}`:'Coming with the licensed catalog';
+    paintPreview(c);
+    if(pv.on)followPreview();else warmPreview(c);
     if(navigator.vibrate)try{navigator.vibrate(6);}catch(e){}
   }
 }
@@ -961,7 +991,53 @@ window.addEventListener('resize',scheduleWheel);
 function scrollToIdx(i,smooth){wheel.scrollTo({top:i*IH,behavior:smooth&&!reduceMotion?'smooth':'auto'});}
 wheel.onclick=e=>{const b=e.target.closest('.slot');if(!b)return;const i=+b.dataset.i;if(i!==focusIdx)scrollToIdx(i,true);else choose();};
 wheel.onkeydown=e=>{if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();scrollToIdx(Math.max(0,Math.min(VIEW.length-1,focusIdx+(e.key==='ArrowDown'?1:-1))),true);}else if(e.key==='Enter')choose();};
-function choose(){const c=VIEW[focusIdx];if(c&&c.song)openSheet(c.song);}
+function choose(){const c=VIEW[focusIdx];if(c&&c.song){stopPreview();openSheet(c.song);}}
+
+/* ---------- Previews ---------- */
+// Tap the record to hear the focused song. While it's on, scrolling the drum plays each song you land on,
+// so you can browse by ear. A clip is 15 seconds from where the singing starts.
+
+function paintPreview(c){
+  const d=$('preview'),ok=!!(c&&c.song);d.setAttribute('aria-disabled',String(!ok));
+  d.setAttribute('aria-label',!ok?'No preview for this song yet':pv.on?`Stop the preview of ${c.title}`:`Play a preview of ${c.title}`);
+}
+function previewIcon(on){$('previewIcon').setAttribute('d',on?'M8 6h3v12H8zM13 6h3v12h-3z':'M9 6.5v11l9-5.5z');}
+function silencePreview(){
+  cancelAnimationFrame(pv.raf);clearTimeout(pv.timer);pv.tok++;
+  if(pv.nodes){const {g,srcs}=pv.nodes,t=ctx.currentTime;g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(g.gain.value,t);g.gain.linearRampToValueAtTime(0,t+.25);
+    srcs.forEach(x=>{try{x.stop(t+.3);}catch(e){}});pv.nodes=null;}
+  $('previewProg').style.strokeDasharray='0 100';$('preview').classList.remove('wait');pv.song=null;
+}
+function stopPreview(){silencePreview();pv.on=false;const d=$('preview');d.classList.remove('on');d.setAttribute('aria-pressed','false');previewIcon(false);paintPreview(VIEW[focusIdx]);}
+async function playPreview(song){
+  silencePreview();ensureCtx();const tok=pv.tok,d=$('preview');pv.song=song;d.classList.add('wait');
+  let tr;try{tr=await tracksFor(song);}catch(e){delete cache[song.id];if(tok===pv.tok)stopPreview();return;}
+  if(tok!==pv.tok)return;d.classList.remove('wait');
+  const at=Math.max(0,song.own?(song.firstT||0)-.4:(song.down||0)),len=Math.min(PV_LEN,Math.max(3,tr.back.duration-at)),t=ctx.currentTime+.05;
+  const g=ctx.createGain();g.connect(ctx.destination);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.9,t+.35);
+  g.gain.setValueAtTime(.9,t+len-1.2);g.gain.linearRampToValueAtTime(0,t+len);
+  const srcs=[];const add=(buf,v)=>{const s=ctx.createBufferSource(),gg=ctx.createGain();s.buffer=buf;gg.gain.value=v;s.connect(gg);gg.connect(g);s.start(t,at,len);srcs.push(s);};
+  add(tr.back,1);if(tr.guide)add(tr.guide,song.own?1:.7);   // your own songs play with the singer, like the record
+  pv.nodes={g,srcs};pv.t0=t;
+  const tick=()=>{const f=Math.min(1,Math.max(0,(ctx.currentTime-pv.t0)/len));$('previewProg').style.strokeDasharray=`${(f*100).toFixed(2)} 100`;
+    if(f<1)pv.raf=requestAnimationFrame(tick);else if(tok===pv.tok)stopPreview();};
+  tick();
+}
+// Get the song you've settled on ready ahead of a tap, so the preview starts right away.
+let warmT=0;function warmPreview(c){clearTimeout(warmT);if(!c||!c.song||cache[c.song.id])return;
+  warmT=setTimeout(()=>{if(VIEW[focusIdx]===c&&$('pick').classList.contains('on'))tracksFor(c.song).catch(()=>delete cache[c.song.id]);},900);}
+// Landing on a new song while previewing: wait until the drum settles, then switch.
+function followPreview(){
+  clearTimeout(pv.timer);const c=VIEW[focusIdx];
+  if(!c||!c.song){silencePreview();return;}
+  if(pv.song===c.song)return;
+  pv.timer=setTimeout(()=>{if(pv.on&&VIEW[focusIdx]===c)playPreview(c.song);},280);
+}
+$('preview').onclick=()=>{
+  const c=VIEW[focusIdx];if(!c||!c.song)return;
+  if(pv.on){stopPreview();return;}
+  pv.on=true;const d=$('preview');d.classList.add('on');d.setAttribute('aria-pressed','true');previewIcon(true);paintPreview(c);playPreview(c.song);
+};
 $('pickGo').onclick=choose;
 function openPicker(keep){ensureCtx();show('pick');renderChips();if(focusIdx<0||keep)renderWheel(keep||CATALOG.find(c=>c.song&&c.song.own)||CATALOG.find(c=>c.song&&c.song.id==='jingle'));else paintWheel();}
 // The next page washes over this one as a circle that grows out of whatever you tapped,
@@ -2094,8 +2170,6 @@ function ownFound(){
     v?`Melody read from the singer, ${v.notes.length} notes`:'',
     v&&v.wt?`Every word timed by listening, ${v.wt.filter(Boolean).length} of ${f.lrc.filter(l=>l.text).length} lines`:v&&v.al!=null?'Lines matched to the singer’s phrases':`Synced lyrics, ${f.lrc.filter(l=>l.text).length} lines`,
     segs.length?(ch?`Starts in ${keyName(segs[0].k)}, then changes key ${ch===1?'once':ch+' times'}`:`In ${keyName(segs[0].k)}`):'',
-    v&&!v.wt&&v.wordsWhy?'Timing by listening didn’t work: '+v.wordsWhy:'',
-    p.found.lrcDur&&Math.abs(an.dur-p.found.lrcDur)>4?`Heads up: this version is ${fmtLen(Math.abs(an.dur-p.found.lrcDur))} ${an.dur<p.found.lrcDur?'shorter':'longer'} than the one the lyrics were timed to`:'',
     ...((v&&v.ai&&v.ai.problems)||[]).slice(0,2).map(x=>'Heads up: '+x)];
   $('ownFacts').innerHTML=facts.filter(Boolean).map(x=>`<li>${esc(x)}</li>`).join('');
   $('ownFine').textContent='Your song stays on this device. To separate the singer, it’s sent briefly to our audio partner, then deleted. Lyrics come from LRCLIB, for personal practice.';
@@ -2162,7 +2236,7 @@ async function finishOwn(job){
   tick(3);tick(4,'active');
   const al=alignToMelody(notes,p.found.lrc);let wt=null,wordsWhy='';
   try{const heard=await aiWords(sp.task,p.found.lrc,vb.duration);wt=mapWords(p.found.lrc,heard);
-    if(!wt)wordsWhy=heard.length<10?`it heard only ${heard.length} words`:`the ${heard.length} words it heard didn’t match the lyrics`;}
+    if(!wt)console.warn('words: '+(wordsWhy=heard.length<10?`it heard only ${heard.length} words`:`the ${heard.length} words it heard didn’t match the lyrics`));}
   catch(e){console.warn('words',e);wordsWhy=String(e&&e.message||e).slice(0,140);} // falls back to the melody
   if(job!==ownJob)return;tick(4);tick(5,'active');await pause(400);tick(5);await pause(300);
   p.an=an;p.vocal={file:sp.vocal,vb,notes,al,wt,ai:verdict,wordsWhy};p.inst={blob:sp.inst,buf:ib};
