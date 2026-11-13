@@ -180,6 +180,10 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px so
 .sing-title{flex:1;min-width:0;display:flex;align-items:center;gap:10px}
 .sing-title b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #left{opacity:.7;font-variant-numeric:tabular-nums;flex:none}
+#volBtn{margin-right:-10px}#volBtn svg{width:24px;height:24px}
+.volrow{display:flex;align-items:center;gap:12px;background:rgba(29,22,49,.55);border-radius:99px;padding:6px 18px;margin-top:6px}
+.volrow label{font-size:13px;font-weight:700;color:var(--muted);flex:none}
+.volrow input{flex:1;accent-color:var(--song)}
 .prog{height:4px;border-radius:4px;background:rgba(29,22,49,.16);margin-top:10px;overflow:hidden;flex:none}
 .prog i{display:block;height:100%;width:0;background:var(--ink);border-radius:4px}
 .lyrics{flex:1;display:flex;flex-direction:column;justify-content:flex-start;padding-top:12vh;gap:9px;min-height:0;overflow:hidden}
@@ -282,10 +286,7 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
 @keyframes rsIn{from{opacity:0;transform:translateY(10px) scale(.96)}}
 /* Your take: play it back, set the mix, choose how your voice sounds and where you're singing */
 .mytake{background:var(--ink-2);border-radius:24px;overflow:hidden;padding:14px 14px 12px;display:grid;gap:12px}
-.stabs{display:flex;gap:18px;border-bottom:1px solid rgba(251,249,255,.1);margin-top:2px}
-.stabs button{font-size:15px;font-weight:800;padding:8px 0 10px;color:var(--muted);box-shadow:inset 0 -2px 0 transparent}
-.stabs button span{font-weight:600;margin-left:4px;opacity:.75}
-.stabs button[aria-selected=true]{color:var(--paper);box-shadow:inset 0 -2px 0 var(--song)}
+.fxl{font-size:13px;font-weight:700;color:var(--muted);margin:4px 0 -4px}
 .fx{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 -14px;padding:0 14px}
 .fx::-webkit-scrollbar{display:none}
 .fx button{flex:none;min-height:42px;padding:0 15px;border-radius:99px;font-size:15px;font-weight:700;color:var(--paper);box-shadow:inset 0 0 0 1.5px rgba(251,249,255,.2)}
@@ -478,7 +479,9 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
     <button class="icon" id="quit" aria-label="Leave the stage">&#10005;</button>
     <span class="sing-title"><span class="mini"><svg class="belter" id="rider" data-me="1" data-bust="head" viewBox="16 0 88 96"></svg></span><b id="singTitle"></b></span>
     <span id="left"></span>
+    <button class="icon" id="volBtn" aria-label="Music volume" aria-expanded="false" aria-controls="volRow"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.2L12 5.5v13l-4.8-4H4z" fill="currentColor"/><path d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a7.8 7.8 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></button>
   </header>
+  <div class="volrow" id="volRow" hidden><label for="vol">Music volume</label><input type="range" id="vol" min="0" max="100" value="100"></div>
   <div class="prog"><i id="prog"></i></div>
   <div class="lyrics" id="lyrics" aria-live="polite">
     <div class="ready" id="ready">
@@ -519,16 +522,14 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
         <div><span>More music</span><span>More you</span></div>
       </div>
     </div>
-    <div class="stabs" role="tablist" aria-label="Sound">
-      <button role="tab" id="tabVoice" aria-selected="true" aria-controls="fxVoice">Voice <span id="tabVoiceV">Studio</span></button>
-      <button role="tab" id="tabRoom" aria-selected="false" aria-controls="fxRoom">Room <span id="tabRoomV">Bedroom</span></button>
-    </div>
-    <div class="fx" id="fxVoice" role="tabpanel" aria-labelledby="tabVoice">
+    <p class="fxl" id="fxVoiceL">Voice</p>
+    <div class="fx" id="fxVoice" role="group" aria-labelledby="fxVoiceL">
       <button data-fx="natural" aria-pressed="false">Natural</button>
       <button data-fx="studio" aria-pressed="true">Studio</button>
       <button data-fx="radio" aria-pressed="false">Radio</button>
     </div>
-    <div class="fx" id="fxRoom" role="tabpanel" aria-labelledby="tabRoom" hidden>
+    <p class="fxl" id="fxRoomL">Room</p>
+    <div class="fx" id="fxRoom" role="group" aria-labelledby="fxRoomL">
       <button data-room="bedroom" aria-pressed="true">Bedroom</button>
       <button data-room="shower" aria-pressed="false">Shower</button>
       <button data-room="bar" aria-pressed="false">Karaoke bar</button>
@@ -856,6 +857,7 @@ let micAec=null,micNodes=[];
 function releaseMic(){
   if(!micStream)return;
   micStream.getTracks().forEach(t=>t.stop());micNodes.forEach(n=>{try{n.disconnect();}catch(e){}});micStream=null;micNodes=[];analyser=null;monitor=null;micAec=null;
+  try{if(navigator.audioSession)navigator.audioSession.type='playback';}catch(e){}
 }
 // Keep the screen awake while you're on the stage; nobody touches their phone mid-song.
 let wake=null;
@@ -871,6 +873,7 @@ async function getMic(aec){
   if(micStream){micStream.getTracks().forEach(t=>t.stop());micNodes.forEach(n=>{try{n.disconnect();}catch(e){}});micStream=null;micNodes=[];}
   try{
     if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return false;
+    try{if(navigator.audioSession)navigator.audioSession.type='play-and-record';}catch(e){}
     micStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:aec,noiseSuppression:false,autoGainControl:false}});micAec=aec;
     const src=ctx.createMediaStreamSource(micStream);micNodes.push(src);
     analyser=ctx.createAnalyser();analyser.fftSize=2048;src.connect(analyser);
@@ -1243,16 +1246,25 @@ $('readyGo').onclick=()=>{
   ensureCtx();const sg=$('sing');sg.classList.remove('is-ready');sg.classList.add('clearing');sg.style.setProperty('--lights','.5');startSong();
   clearTimeout(sg._t);sg._t=setTimeout(()=>{sg.classList.remove('clearing');sg.classList.add('live');},reduceMotion?0:1300);
 };
+// While the mic is on, phones treat Belt like a call, so the volume buttons change call volume instead of the music.
+// The music therefore has its own volume on the stage.
+let stageOut=null;
+const stageVol=()=>{const v=+pref('vol','100')/100;return v*v;};
+$('volBtn').onclick=()=>{const r=$('volRow'),open=r.hidden;r.hidden=!open;$('volBtn').setAttribute('aria-expanded',String(open));};
+$('vol').value=pref('vol','100');
+$('vol').oninput=()=>{setPref('vol',$('vol').value);if(stageOut)stageOut.gain.setTargetAtTime(stageVol(),ctx.currentTime,.05);};
 function startSong(){
   const song=current;
-  const mk=(buf,gain)=>{const s=ctx.createBufferSource();s.buffer=buf;const g=ctx.createGain();g.gain.value=gain;s.connect(g);g.connect(ctx.destination);return {s,g};};
+  if(!stageOut){stageOut=ctx.createGain();stageOut.connect(ctx.destination);}stageOut.gain.value=stageVol();
+  const mk=(buf,gain)=>{const s=ctx.createBufferSource();s.buffer=buf;const g=ctx.createGain();g.gain.value=gain;s.connect(g);g.connect(stageOut);return {s,g};};
   const back=mk(tracks.back,1),gd=tracks.guide?mk(tracks.guide,$('guide').checked?(song.own?.22:.6):0):null;
   // every song gets the same lead-in: at least four seconds of dashes before the first word
   const startAt=ctx.currentTime+.3+Math.max(0,4-song.firstT);back.s.start(startAt);if(gd)gd.s.start(startAt);
   const hear=!demo&&monitor&&$('monitor').checked;
   if(monitor)monitor.gain.setTargetAtTime(hear?.9:0,ctx.currentTime,.05);
   if(!demo)$('micLabel').textContent=hear?'You can hear yourself':'';
-  run={song,startAt,back,gd,chunks:[],recT:null,rec:!demo,idx:-1,spans:[],trail:[],abuf:new Float32Array(2048),lastM:null,sm:null,diffs:[],key:0,center:null,lastF:performance.now(),bg:null,
+  const tr=micStream&&micStream.getAudioTracks()[0],ts=tr&&tr.getSettings?tr.getSettings():{};
+  run={song,startAt,back,gd,chunks:[],recT:null,inLat:typeof ts.latency==='number'&&ts.latency<.5?ts.latency:0,rec:!demo,idx:-1,spans:[],trail:[],abuf:new Float32Array(2048),lastM:null,sm:null,diffs:[],key:0,center:null,lastF:performance.now(),bg:null,
     fake:inKeyMode(song)&&demo?fakePlan(song):null,dashes:[...$('breath').children],rlo:null,rhi:null,ns:new Map(),ni:0,pop:null,lvl:0,sung:[],range:'',bold:$('bold').checked,loud:[]};
   requestAnimationFrame(loop);
 }
@@ -1430,6 +1442,22 @@ $('qEnd').onclick=()=>{closeQuit();stopRun();run=null;leaveStage();};
 $('qFinish').onclick=()=>{if(!run){closeQuit();return;}run.stopT=Math.max(0,songTime());closeQuit();finish();};
 $('scrim').addEventListener('click',()=>{if($('quitSheet').classList.contains('on'))closeQuit();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('quitSheet').classList.contains('on'))closeQuit();});
+// How late the recording runs against the song, in samples. Compares where sounds start (onsets) in your voice
+// with the guide (the singer for your own songs, the melody for Belt's) over the whole take, and only trusts a clear match.
+function voiceLag(voice,ref,sr){
+  if(!ref)return 0;
+  const hop=Math.round(sr/100),n=Math.min(Math.floor(voice.length/hop),Math.floor(ref.length/hop));if(n<300)return 0;
+  const g=ref.getChannelData(0),onset=x=>{const e=new Float32Array(n),o=new Float32Array(n);
+    for(let i=0;i<n;i++){let s=0;for(let k=i*hop,m=k+hop;k<m;k++)s+=x[k]*x[k];e[i]=Math.log(1e-6+Math.sqrt(s/hop));}
+    for(let i=1;i<n;i++)o[i]=Math.max(0,e[i]-e[i-1]);let mu=0;for(const v of o)mu+=v;mu/=n;let sd=0;for(let i=0;i<n;i++){o[i]-=mu;sd+=o[i]*o[i];}sd=Math.sqrt(sd/n)||1;for(let i=0;i<n;i++)o[i]/=sd;return o;};
+  const a=onset(voice),b=onset(g),score=L=>{let s=0;for(let i=Math.max(0,-L);i<n&&i+L<n;i++)s+=a[i+L]*b[i];return s/n;};
+  let best=0,bs=-1e9;const all=[];
+  for(let L=-8;L<=45;L++){const v=score(L);all.push(v);if(v>bs){bs=v;best=L;}}   // -80 ms to +450 ms
+  const sorted=[...all].sort((x,y)=>x-y),med=sorted[sorted.length>>1];
+  // a real match stands well above the rest, and is clearly better than leaving it alone
+  if(bs<.08||bs-med<.05||bs-score(0)<.02)return 0;
+  return best*hop;
+}
 function finish(){
   const r=run;r.rec=false;stopRun();run=null;clearTimeout($('sing')._t);$('sing').classList.remove('live','clearing');
   stayAwake(false);releaseMic();
@@ -1440,9 +1468,12 @@ function finish(){
     if(demo)voice=inKeyMode(song)?fakeVoiceOwn(song,sr,r.fake):fakeVoice(song,sr);
     else{
       const total=Math.ceil(song.dur*sr);voice=new Float32Array(total);
-      const comp=(ctx.outputLatency||0)+(ctx.baseLatency||0);
+      const comp=(ctx.outputLatency||0)+(ctx.baseLatency||0)+(r.inLat||0);
       let i0=Math.round(((r.recT??r.startAt)-r.startAt-comp)*sr);
       for(const c of r.chunks){for(let i=0;i<c.length;i++){const j=i0+i;if(j>=0&&j<total)voice[j]=c[i];}i0+=c.length;}
+      // phones don't report every delay (Bluetooth, the mic itself), so line your voice up with the song by ear
+      const lag=voiceLag(voice,tracks.guide,sr);
+      if(lag){const v2=new Float32Array(total);if(lag>0)v2.set(voice.subarray(lag));else v2.set(voice.subarray(0,total+lag),-lag);voice=v2;}
     }
     const until=r.stopT??null,sc=scoreTake(song,voice,sr,until);
     last={song,voice,sc,until};if(!demo){rememberTake(song,sc);setPref('sung',String(+pref('sung','0')+1));}
@@ -1743,7 +1774,6 @@ function endMix(){const t=tail;tail=null;stopMix();tail=t;}
 function paintSound(){
   document.querySelectorAll('#fxVoice button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.fx===fxName));
   document.querySelectorAll('#fxRoom button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.room===roomName));
-  $('tabVoiceV').textContent=$('fxVoice').querySelector(`[data-fx="${fxName}"]`).textContent;$('tabRoomV').textContent=ROOMS[roomName].name;
 }
 paintSound();
 document.querySelectorAll('#fxVoice button').forEach(bt=>bt.onclick=()=>{
@@ -1755,9 +1785,7 @@ document.querySelectorAll('#fxRoom button').forEach(bt=>bt.onclick=()=>{
   roomName=bt.dataset.room;setPref('room',roomName);paintSound();
   if(mix){const t=Math.max(mix.off,(ctx.currentTime-mix.at)*(mix.b.playbackRate.value)+mix.off);playMix(t);}else playMix();
 });
-document.querySelectorAll('.stabs [role=tab]').forEach(tb=>tb.onclick=()=>{
-  document.querySelectorAll('.stabs [role=tab]').forEach(x=>{const on=x===tb;x.setAttribute('aria-selected',on);$(x.getAttribute('aria-controls')).hidden=!on;});
-});
+
 $('play').onclick=()=>mix?stopMix():playMix();
 $('bal').oninput=()=>{if(!mix)return;const {music,voice}=balGains();mix.gb.gain.setTargetAtTime(music,ctx.currentTime,.05);mix.gv.gain.setTargetAtTime(voice,ctx.currentTime,.05);};
 $('again').onclick=async()=>{stopMix();ensureCtx();current=last.song;tracks=await tracksFor(current);const ok=await getMic(!$('monitor').checked);demo=!ok;readySong();};
