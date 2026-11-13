@@ -1738,7 +1738,7 @@ function parseLRC(txt){
   return out.sort((a,b)=>a.t-b.t);
 }
 function buildOwnLines(song){
-  const off=(song.autoOff||0)+(song.userOff||0),lrc=song.lrc,lines=[];
+  const off=(song.autoOff||0)+(song.userOff||0),lrc=song.lrc;let lines=[];
   for(let i=0;i<lrc.length;i++){
     const text=lrc[i].text;if(!text||/^[♪♫\s]+$/.test(text))continue;
     const st=lrc[i].t+off,nx=lrc[i+1]?lrc[i+1].t+off:st+6,gap=Math.max(.6,nx-st);
@@ -1751,8 +1751,8 @@ function buildOwnLines(song){
   const raw=song.rawNotes||(song.rawNotes=song.notes||[]);
   // a timed line far from where its neighbours put the lyrics is a wrong match (often a repeated chorus): skip it
   const okW=lines.map((L,k)=>{const w=song.wt&&song.wt[k];return w&&w.length===L.syl.length?w[0][0]-L.t0:null;});
-  okW.forEach((o,k)=>{if(o==null)return;const near=[];for(let j=Math.max(0,k-5);j<=Math.min(okW.length-1,k+5);j++)if(j!==k&&okW[j]!=null)near.push(okW[j]);
-    if(near.length>=2){near.sort((a,b)=>a-b);if(Math.abs(o-near[near.length>>1])>2.5)okW[k]=null;}});
+  okW.forEach((o,k)=>{if(o==null)return;let p=null,n=null;for(let j=k-1;j>=0;j--)if(okW[j]!=null){p=okW[j];break;}for(let j=k+1;j<okW.length;j++)if(okW[j]!=null){n=okW[j];break;}
+    if(p!=null&&n!=null&&Math.abs(o-p)>2.5&&Math.abs(o-n)>2.5)okW[k]=null;});
   let lastAi=-1e9;okW.forEach((o,k)=>{if(o==null)return;const st=lines[k].t0+o;if(st<lastAi-.3)okW[k]=null;else lastAi=st;});
   if(song.wt)lines.forEach((L,k)=>{const w=song.wt[k];if(!w||w.length!==L.syl.length||okW[k]==null)return;
     L.syl.forEach((x,j)=>{x.start=w[j][0];x.end=Math.max(w[j][0]+.08,w[j][1]);});L.start=L.syl[0].start;L.end=L.syl[L.syl.length-1].end;L.ai=true;});
@@ -1763,12 +1763,60 @@ function buildOwnLines(song){
       const oa=a>=0?lines[a].start-lines[a].t0:null,ob=b>=0?lines[b].start-lines[b].t0:null;
       const off=oa==null?ob:ob==null?oa:oa+(ob-oa)*(L.t0-lines[a].t0)/Math.max(.01,lines[b].t0-lines[a].t0);
       if(off){L.start+=off;L.end+=off;L.syl.forEach(x=>{x.start+=off;x.end+=off;});}}
-  }else if(raw.length)trackDrift(lines,raw);
+  }else if(raw.length&&!alignLines(lines,raw,song.lrcDur&&song.len?(song.len-song.lrcDur)-(song.autoOff||0):0))trackDrift(lines,raw);
+  if(lines.some(L=>L.gone))lines=lines.filter(L=>!L.gone);   // sections cut from this version
   if(raw.length)fitWordsToNotes(lines,raw);
   song.lines=lines;
   if(raw.length){song.notes=notesInLyrics(raw,lines);startNotesAtWords(song);labelNotes(song);}
   song.lead=song.firstT=lines.length?lines[0].start:0;
   song.lastEnd=lines.length?lines[lines.length-1].end:song.len;
+}
+// Lyric files are timed to the album version. Videos and re-recordings can be edited (a section cut or added)
+// or drift. Find each line's shift with a best-path search: a line wants to start on a sung phrase and be
+// covered by singing; small changes between lines are cheap, a jump (an edit) is allowed but costs more.
+function alignLines(lines,ns,edit){
+  if(!ns.length||lines.length<3)return false;
+  const R=.05,T=Math.ceil((ns[ns.length-1].t+ns[ns.length-1].d+60)/R),vo=new Uint8Array(T+1);
+  for(const n of ns)for(let k=Math.max(0,Math.floor(n.t/R)),e=Math.min(T,Math.ceil((n.t+n.d)/R));k<e;k++)vo[k]=1;
+  const ps=new Float64Array(T+2);for(let k=0;k<=T;k++)ps[k+1]=ps[k]+vo[k];
+  const cov=(a,b)=>{const i=Math.max(0,Math.floor(a/R)),j=Math.min(T,Math.ceil(b/R));return j>i?(ps[j]-ps[i])/(j-i):0;};
+  const on=ns.filter((n,i)=>i===0||n.t-(ns[i-1].t+ns[i-1].d)>.2).map(n=>n.t);
+  const near=t=>{let lo=0,hi=on.length;while(lo<hi){const m=(lo+hi)>>1;if(on[m]<t)lo=m+1;else hi=m;}let d=1e9;if(lo<on.length)d=on[lo]-t;if(lo>0)d=Math.min(d,t-on[lo-1]);return d;};
+  const S=601,O=k=>(k-300)*.1;
+  const em=(L,k)=>{const s=L.t0+O(k),d=Math.max(.6,L.end-L.start),c=cov(s,s+d);
+    return 1.5*c+2*Math.max(0,1-near(s)/.35)-1.2*cov(s-.6,s)-(c<.15?.8:0)-.01*Math.abs(O(k));};
+  // the start lines up already; if this version is shorter or longer than the one the lyrics were timed to,
+  // the end should be shifted by about that much (a cut or an added section somewhere in between).
+  // When it's shorter, lines can be left out: they were cut from this version.
+  const D=edit&&Math.abs(edit)>1.5?edit:0,last=lines.length-1,canCut=D<0,GONE=.8;
+  const emAt=(i,k)=>em(lines[i],k)-(i===0?.4*Math.abs(O(k)):0)-(i===last&&D?.9*Math.abs(O(k)-D):0);
+  // states 0..S-1: the line is sung at that shift; S..2S-1: the line was cut (the shift is just where it sits in order)
+  const N=2*S;let prev=new Float64Array(N).fill(-1e18);const back=[];
+  for(let k=0;k<S;k++){prev[k]=emAt(0,k);if(canCut)prev[S+k]=-GONE-.4*Math.abs(O(k));}
+  for(let i=1;i<lines.length;i++){
+    const L=lines[i],P=lines[i-1],cur=new Float64Array(N).fill(-1e18),b=new Int16Array(N);
+    // a sung line can't start on top of the line before it; a cut line only has to keep its place in order
+    const gap=Math.min(1,.5*Math.max(.3,P.end-P.start)),roomS=(L.t0-P.t0-gap)/.1,roomG=(L.t0-P.t0-.3)/.1;
+    const pmS=new Float64Array(S),paS=new Int16Array(S),pmG=new Float64Array(S),paG=new Int16Array(S);
+    let v1=-1e18,a1=0,v2=-1e18,a2=S;
+    for(let j=0;j<S;j++){if(prev[j]>v1){v1=prev[j];a1=j;}pmS[j]=v1;paS[j]=a1;if(prev[S+j]>v2){v2=prev[S+j];a2=S+j;}pmG[j]=v2;paG[j]=a2;}
+    for(let k=0;k<S;k++){
+      let best=-1e18,arg=k;const JS=Math.min(S-1,Math.floor(k+roomS)),JG=Math.min(S-1,Math.floor(k+roomG));
+      for(let j=Math.max(0,k-15);j<=Math.min(k+15,JS);j++){const v=prev[j]-Math.abs(j-k)*.06;if(v>best){best=v;arg=j;}}
+      if(JS>=0&&pmS[JS]-3>best){best=pmS[JS]-3;arg=paS[JS];}
+      if(JG>=0&&pmG[JG]>best){best=pmG[JG];arg=paG[JG];}   // after cut lines, carry on from wherever the cut ends
+      cur[k]=best+emAt(i,k);b[k]=arg;
+      if(canCut){let gb=-1e18,ga=0;
+        if(JG>=0){if(pmS[JG]>gb){gb=pmS[JG];ga=paS[JG];}if(pmG[JG]>gb){gb=pmG[JG];ga=paG[JG];}}
+        cur[S+k]=gb-GONE-(i===last&&D?.9*Math.abs(O(k)-D):0);b[S+k]=ga;}
+    }
+    back.push(b);prev=cur;
+  }
+  let k=0;for(let j=1;j<N;j++)if(prev[j]>prev[k])k=j;
+  const st=new Array(lines.length);st[last]=k;for(let i=last;i>0;i--){k=back[i-1][k];st[i-1]=k;}
+  lines.forEach((L,i)=>{const gone=st[i]>=S,o=O(st[i]%S);if(gone)L.gone=true;
+    if(o){L.start+=o;L.end+=o;L.syl.forEach(x=>{x.start+=o;x.end+=o;});}});
+  return true;
 }
 // Lyric files are timed to the original record; a re-recording drifts. Follow the drift line by line,
 // moving each line toward the sung phrase it belongs to, a little at a time.
@@ -1879,7 +1927,7 @@ function alignToMelody(notes,lrc){
 }
 function makeOwnSong(rec){
   const s={id:rec.id,title:rec.title,artist:rec.artist,year:rec.year,album:rec.album,color:rec.color,own:true,vibe:'Your own track',
-    lrc:rec.lrc,autoOff:rec.autoOff||0,userOff:0,an:rec.an,len:rec.an.dur,dur:rec.an.dur,endT:rec.an.dur-.05,notes:rec.notes||[],wt:rec.wt||null,mv:rec.mv||1};
+    lrc:rec.lrc,autoOff:rec.autoOff||0,userOff:0,lrcDur:rec.lrcDur||0,an:rec.an,len:rec.an.dur,dur:rec.an.dur,endT:rec.an.dur-.05,notes:rec.notes||[],wt:rec.wt||null,mv:rec.mv||1};
   setRange(s);buildOwnLines(s);buildMood(s);return s;
 }
 async function loadOwnTracks(song){
@@ -2046,6 +2094,8 @@ function ownFound(){
     v?`Melody read from the singer, ${v.notes.length} notes`:'',
     v&&v.wt?`Every word timed by listening, ${v.wt.filter(Boolean).length} of ${f.lrc.filter(l=>l.text).length} lines`:v&&v.al!=null?'Lines matched to the singer’s phrases':`Synced lyrics, ${f.lrc.filter(l=>l.text).length} lines`,
     segs.length?(ch?`Starts in ${keyName(segs[0].k)}, then changes key ${ch===1?'once':ch+' times'}`:`In ${keyName(segs[0].k)}`):'',
+    v&&!v.wt&&v.wordsWhy?'Timing by listening didn’t work: '+v.wordsWhy:'',
+    p.found.lrcDur&&Math.abs(an.dur-p.found.lrcDur)>4?`Heads up: this version is ${fmtLen(Math.abs(an.dur-p.found.lrcDur))} ${an.dur<p.found.lrcDur?'shorter':'longer'} than the one the lyrics were timed to`:'',
     ...((v&&v.ai&&v.ai.problems)||[]).slice(0,2).map(x=>'Heads up: '+x)];
   $('ownFacts').innerHTML=facts.filter(Boolean).map(x=>`<li>${esc(x)}</li>`).join('');
   $('ownFine').textContent='Your song stays on this device. To separate the singer, it’s sent briefly to our audio partner, then deleted. Lyrics come from LRCLIB, for personal practice.';
@@ -2110,10 +2160,12 @@ async function finishOwn(job){
   const an=await p.anP,notes=await extractMelody(vb,an.tau),verdict=await p.judgeP;if(job!==ownJob)return;
   if(notes.length<20||(verdict&&verdict.hasLeadVocal===false)){closeOwn();toast('This file has no singing in it. Upload the song the way you normally hear it, with the singer.');return;}
   tick(3);tick(4,'active');
-  const al=alignToMelody(notes,p.found.lrc);let wt=null;
-  try{wt=mapWords(p.found.lrc,await aiWords(sp.task,p.found.lrc,vb.duration));}catch(e){console.warn('words',e);} // falls back to the melody
+  const al=alignToMelody(notes,p.found.lrc);let wt=null,wordsWhy='';
+  try{const heard=await aiWords(sp.task,p.found.lrc,vb.duration);wt=mapWords(p.found.lrc,heard);
+    if(!wt)wordsWhy=heard.length<10?`it heard only ${heard.length} words`:`the ${heard.length} words it heard didn’t match the lyrics`;}
+  catch(e){console.warn('words',e);wordsWhy=String(e&&e.message||e).slice(0,140);} // falls back to the melody
   if(job!==ownJob)return;tick(4);tick(5,'active');await pause(400);tick(5);await pause(300);
-  p.an=an;p.vocal={file:sp.vocal,vb,notes,al,wt,ai:verdict};p.inst={blob:sp.inst,buf:ib};
+  p.an=an;p.vocal={file:sp.vocal,vb,notes,al,wt,ai:verdict,wordsWhy};p.inst={blob:sp.inst,buf:ib};
   ownFound();
 }
 $('ownBtn').onclick=()=>{if(!aiOn()){authFor('own');return;}ensureCtx();const f=$('ownFile');f.value='';f.click();};
@@ -2143,7 +2195,7 @@ $('ownGo').onclick=async()=>{
   const h=parseInt(p.id.slice(4,10),16)||0;
   // a backing track a few seconds longer than the original usually has a count-in at the start
   const rec={id:p.id,title:f.title,artist:f.artist,album:f.album,year:f.year,color:OWN_PAL[h%OWN_PAL.length],lrc:f.lrc,
-    autoOff:al!=null?al:d>.8&&d<8?+d.toFixed(2):0,userOff:0,an:p.an,blob:back.blob,added:Date.now(),vocal:v?v.file:null,notes:v?v.notes:null,mv:MELODY_V,wt:v?v.wt:null,ai:v?v.ai:null};
+    autoOff:al!=null?al:d>.8&&d<8?+d.toFixed(2):0,userOff:0,lrcDur:f.lrcDur||0,an:p.an,blob:back.blob,added:Date.now(),vocal:v?v.file:null,notes:v?v.notes:null,mv:MELODY_V,wt:v?v.wt:null,ai:v?v.ai:null};
   const song=makeOwnSong(rec);cache[song.id]=Promise.resolve({back:back.buf,guide:v?v.vb:null});
   await kv('put','track:'+rec.id,rec);
   const ids=(await kv('get','own:list'))||[];if(!ids.includes(rec.id)){ids.unshift(rec.id);await kv('put','own:list',ids);}
@@ -2229,7 +2281,7 @@ function mixToWav(bufs){
 async function aiWords(task,lrc,dur){
   const prompt=lrc.map(l=>l.text).filter(Boolean).join(' ');
   const {id}=await ai('words_start',{splitId:task,prompt});
-  for(let i=0;i<100;i++){await pause(3500);const r=await ai('words_poll',{id});
+  for(let i=0;i<150;i++){await pause(3500);const r=await ai('words_poll',{id});
     if(r.status==='completed')return wordsFrom(r.data,dur);if(r.status==='error')throw new Error(r.error);}
   throw new Error('Word timing took too long');
 }
