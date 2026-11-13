@@ -55,7 +55,7 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px so
 .tonight small{display:block;font-size:13px;font-weight:700;color:var(--muted)}
 .tonight b{display:block;font-size:19px;font-weight:800;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tonight em{font-style:normal;font-size:15px;font-weight:700;color:var(--mint)}
-.gbtn{display:flex;justify-content:center;min-height:44px;margin-bottom:10px}
+.gbtn{color-scheme:light;display:flex;justify-content:center;min-height:44px;margin-bottom:10px}
 .legal{display:flex;justify-content:center;gap:20px;margin-top:12px}
 .legal a{font-size:13px;font-weight:600;color:var(--muted);text-decoration:none;padding:4px 2px}
 .legal a:focus-visible{outline:2px solid currentColor;outline-offset:2px;border-radius:4px}
@@ -82,7 +82,8 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px so
 .wheel-wrap{flex:1;position:relative;min-height:0;margin-top:6px}
 .band{position:absolute;left:-8px;right:-8px;top:50%;height:86px;transform:translateY(-50%);border-radius:24px;background:rgba(29,22,49,.1);pointer-events:none}
 .drum{position:absolute;inset:0;perspective:640px;perspective-origin:50% 50%;overflow:hidden;pointer-events:none;-webkit-mask-image:linear-gradient(transparent,#000 22%,#000 78%,transparent);mask-image:linear-gradient(transparent,#000 22%,#000 78%,transparent)}
-.wi{position:absolute;left:12px;right:72px;top:50%;height:84px;margin-top:-42px;transform-origin:50% 50% -150px;backface-visibility:hidden;display:flex;flex-direction:column;justify-content:center;white-space:nowrap;will-change:transform,opacity}
+.wi.wide{right:8px}
+.wi{position:absolute;left:12px;right:126px;top:50%;height:84px;margin-top:-42px;transform-origin:50% 50% -150px;backface-visibility:hidden;display:flex;flex-direction:column;justify-content:center;white-space:nowrap;will-change:transform,opacity}
 .wi b{letter-spacing:-.045em;line-height:1.05;overflow:hidden;text-overflow:ellipsis;font-weight:800}
 .wi small{display:flex;align-items:center;gap:7px;font-size:15px;font-weight:600;opacity:.72;margin-top:6px}
 .wi small svg{width:13px;height:13px;fill:currentColor;flex:none}
@@ -100,23 +101,27 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px so
 .facts .lvl i.on{background:var(--ink)}
 .pick-foot{display:grid;gap:8px}
 /* Preview: a little record. It spins while the song plays; the ring fills as the clip runs. */
-.disc{position:absolute;z-index:2;right:8px;top:50%;width:56px;height:56px;margin-top:-28px;border-radius:50%;display:grid;place-items:center;transition:transform .2s cubic-bezier(.22,1,.36,1),opacity .2s ease}
-.disc:active{transform:scale(.94)}
-.disc[aria-disabled=true]{opacity:0;transform:scale(.7);pointer-events:none}
-.disc .ring{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
-.disc .ring circle{fill:none;stroke:rgba(29,22,49,.2);stroke-width:2.5}
-.disc .ring .prog{stroke:var(--ink);stroke-linecap:round;stroke-dasharray:0 100;opacity:0;transition:opacity .2s ease}
-.disc.on .ring .prog{opacity:1}
-.disc .vinyl{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;
-  background:conic-gradient(from 40deg,transparent 0 9%,rgba(255,255,255,.16) 13%,transparent 18% 59%,rgba(255,255,255,.1) 63%,transparent 68%),
-    repeating-radial-gradient(circle,var(--ink) 0 1.6px,var(--ink-2) 1.6px 2.6px);
-  box-shadow:0 1px 0 rgba(255,255,255,.25) inset}
-.disc .vinyl i{width:20px;height:20px;border-radius:50%;background:var(--focus,#3ddc97);box-shadow:0 0 0 1.5px rgba(29,22,49,.5) inset}
-.disc .glyph{position:absolute;width:14px;height:14px;fill:var(--ink)}
-.disc.on .vinyl{animation:spin 1.8s linear infinite}
-.disc.wait .vinyl{animation:spin 1.8s linear infinite;opacity:.7}
+/* Preview: a record sliding out of the edge of the screen, level with the song in focus.
+   The label (with the song's name) turns while it plays; the light on the vinyl stays put, like the real thing. */
+#pick{overflow:hidden}
+.disc{position:absolute;z-index:2;right:-64px;top:50%;width:156px;height:156px;margin-top:-78px;border-radius:50%;
+  filter:drop-shadow(-10px 14px 18px rgba(29,22,49,.42));transition:transform .5s cubic-bezier(.22,1,.36,1),opacity .35s ease}
+.disc .rec{width:100%;height:100%;display:block}
+.disc.on{transform:translateX(-12px)}
+.disc:active .rec{transform:scale(.97)}
+.disc[aria-disabled=true]{transform:translateX(110px) rotate(40deg);opacity:0;pointer-events:none}
+.disc .label{transform-box:view-box;transform-origin:0 0}
+.disc.on .label,.disc.wait .label{animation:spin 1.8s linear infinite}
+.disc.wait .label{animation-duration:3.6s}
+.disc .lt{font:800 6.4px/1 var(--display);letter-spacing:.9px;text-transform:uppercase;fill:#1d1631;fill-opacity:.82}
+.disc .lb{font:800 10px/1 var(--display);letter-spacing:-.4px;fill:#1d1631}
+.disc .ls{font:800 5.4px/1 var(--display);letter-spacing:1.2px;fill:#1d1631;fill-opacity:.6}
+.disc .prog{fill:none;stroke:#fbf9ff;stroke-opacity:.85;stroke-width:2.4;stroke-linecap:round;stroke-dasharray:0 100;opacity:0;transition:opacity .25s ease}
+.disc.on .prog{opacity:1}
+.disc .pp{position:absolute;left:50%;top:50%;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;background:#1d1631;display:grid;place-items:center;box-shadow:0 0 0 2px rgba(251,249,255,.18)}
+.disc .pp svg{width:13px;height:13px;fill:#fbf9ff}
 @keyframes spin{to{transform:rotate(1turn)}}
-@media (prefers-reduced-motion: reduce){.disc.on .vinyl,.disc.wait .vinyl{animation:none}}
+@media (prefers-reduced-motion: reduce){.disc.on .label,.disc.wait .label{animation:none}}
 .own-btn{justify-self:center;font-size:15px;font-weight:700;padding:9px 16px;border-radius:99px;color:var(--ink)}
 
 /* Sheets */
@@ -233,14 +238,35 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px so
 .legend .k2{width:8px;height:8px;border-radius:50%;background:var(--paper)}
 .legend .k3{width:8px;height:8px;border-radius:50%;background:#ff7a59}
 .player{display:flex;align-items:center;gap:14px}
-.play{width:62px;height:62px;border-radius:50%;background:var(--song);color:var(--ink);display:grid;place-items:center;flex:none}
+.play{width:58px;height:58px;border-radius:50%;background:var(--song);color:var(--ink);display:grid;place-items:center;flex:none}
 .play svg{width:24px;height:24px;fill:currentColor}
 .bal{flex:1;display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--muted)}
 .bal div{display:flex;justify-content:space-between}
 input[type=range]{width:100%;accent-color:var(--song);height:28px}
-.fx{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:var(--ink-2);border-radius:99px;padding:4px}
-.fx button{min-height:44px;border-radius:99px;font-size:15px;font-weight:700;color:var(--muted)}
-.fx button[aria-pressed=true]{background:var(--song);color:var(--ink)}
+/* Your numbers, always on the page: big score in the song's color, two fun facts beside it */
+.rstats{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:8px}
+.rs{border-radius:20px;padding:14px 12px 12px;min-height:96px;display:flex;flex-direction:column;justify-content:space-between;background:var(--ink-2)}
+.rs b{font-size:30px;font-weight:800;letter-spacing:-.04em;line-height:1;font-variant-numeric:tabular-nums;white-space:nowrap}
+.rs > span{font-size:13px;font-weight:700;color:var(--muted);margin-top:10px}
+.rs-score{background:var(--song);color:var(--ink)}
+.rs-score b{font-size:44px;letter-spacing:-.06em}
+.rs-score b small{font-size:22px;letter-spacing:-.02em;margin-left:1px}
+.rs-score > span{color:rgba(29,22,49,.72)}
+.rs-top b{color:var(--gold)}.rs-held b{color:var(--sky)}
+.rstats.go .rs{animation:rsIn .55s cubic-bezier(.22,1,.36,1) backwards}
+.rstats.go .rs:nth-child(2){animation-delay:.08s}.rstats.go .rs:nth-child(3){animation-delay:.16s}
+@keyframes rsIn{from{opacity:0;transform:translateY(10px) scale(.96)}}
+/* Your take: play it back, set the mix, choose how your voice sounds and where you're singing */
+.mytake{background:var(--ink-2);border-radius:24px;overflow:hidden;padding:14px 14px 12px;display:grid;gap:12px}
+.stabs{display:flex;gap:18px;border-bottom:1px solid rgba(251,249,255,.1);margin-top:2px}
+.stabs button{font-size:15px;font-weight:800;padding:8px 0 10px;color:var(--muted);box-shadow:inset 0 -2px 0 transparent}
+.stabs button span{font-weight:600;margin-left:4px;opacity:.75}
+.stabs button[aria-selected=true]{color:var(--paper);box-shadow:inset 0 -2px 0 var(--song)}
+.fx{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 -14px;padding:0 14px}
+.fx::-webkit-scrollbar{display:none}
+.fx button{flex:none;min-height:42px;padding:0 15px;border-radius:99px;font-size:15px;font-weight:700;color:var(--paper);box-shadow:inset 0 0 0 1.5px rgba(251,249,255,.2)}
+.fx button[aria-pressed=true]{background:var(--song);color:var(--ink);box-shadow:none}
+.confetti{position:fixed;inset:0;pointer-events:none;z-index:40}
 .coach-btn{align-self:flex-start;font-size:17px;font-weight:700;color:var(--paper);padding:12px 18px;border-radius:99px;box-shadow:inset 0 0 0 1.5px rgba(251,249,255,.3)}
 .coach-btn[aria-expanded=true]{display:none}
 .coach{display:flex;flex-direction:column;gap:16px}
@@ -363,10 +389,30 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
     <div class="drum" id="drum" aria-hidden="true"></div>
     <div class="wheel" id="wheel" tabindex="0" role="listbox" aria-label="Songs. Use the arrow keys to move."></div>
     <button class="disc" id="preview" type="button" aria-pressed="false" aria-label="Play a preview">
-        <svg class="ring" viewBox="0 0 58 58" aria-hidden="true"><circle cx="29" cy="29" r="27"/><circle class="prog" id="previewProg" cx="29" cy="29" r="27" pathLength="100"/></svg>
-        <span class="vinyl" aria-hidden="true"><i></i></span>
-        <svg class="glyph" viewBox="0 0 24 24" aria-hidden="true"><path id="previewIcon" d="M9 6.5v11l9-5.5z"/></svg>
-      </button>
+      <svg class="rec" viewBox="-100 -100 200 200" aria-hidden="true">
+        <defs>
+          <radialGradient id="vinylG" r="1"><stop offset=".3" stop-color="#1b1530"/><stop offset=".72" stop-color="#120e21"/><stop offset="1" stop-color="#0c0917"/></radialGradient>
+          <linearGradient id="sheenG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".16"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+          <path id="labelArc" d="M0 27a27 27 0 1 1 .01 0"/><path id="labelLow" d="M-31 0a31 31 0 0 0 62 0"/>
+        </defs>
+        <circle r="99" fill="url(#vinylG)"/>
+        <g id="grooves" fill="none" stroke="#fff" stroke-opacity=".045" stroke-width=".55"></g>
+        <circle r="61" fill="none" stroke="#000" stroke-opacity=".45" stroke-width="1.6"/>
+        <circle r="79" fill="none" stroke="#000" stroke-opacity=".45" stroke-width="1.4"/>
+        <circle r="97.6" fill="none" stroke="#fff" stroke-opacity=".14" stroke-width="1"/>
+        <g class="sheen"><path d="M0 0L-38.4-91.5A99 99 0 0 1 9.6-98.5Z" fill="url(#sheenG)" transform="rotate(-38)"/><path d="M0 0L-38.4-91.5A99 99 0 0 1 9.6-98.5Z" fill="url(#sheenG)" transform="rotate(142)"/></g>
+        <g class="label">
+          <circle r="37" fill="var(--focus,#3ddc97)"/>
+          <circle r="34.5" fill="none" stroke="#1d1631" stroke-opacity=".28" stroke-width=".6"/>
+          <circle r="16" fill="none" stroke="#1d1631" stroke-opacity=".18" stroke-width=".6"/>
+          <text class="lt"><textPath href="#labelArc" startOffset="50%" text-anchor="middle" id="recTitle">Jingle Bells</textPath></text>
+          <text class="ls"><textPath href="#labelLow" startOffset="50%" text-anchor="middle">belt   ·   33⅓</textPath></text>
+          <circle r="2.6" fill="#0c0917"/>
+        </g>
+        <path class="prog" id="previewProg" d="M0 97A97 97 0 0 1 0-97" pathLength="100"/>
+      </svg>
+      <span class="pp" aria-hidden="true"><svg viewBox="0 0 24 24"><path id="previewIcon" d="M9 6.5v11l9-5.5z"/></svg></span>
+    </button>
   </div>
   <div class="facts" aria-live="polite">
     <div><b id="fLen">0:33</b><span>Length</span></div>
@@ -432,22 +478,39 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
     <span class="av" aria-hidden="true"><svg class="belter" id="cheerMe" data-me="1" data-mic="none" data-clap="1" viewBox="0 -4 120 140"></svg></span>
     <div class="cheer-text"><h2 class="verdict" id="verdict"></h2><p class="sub" id="sub"></p></div>
   </div>
-  <div class="player">
-    <button class="play" id="play" aria-label="Play your performance"><svg viewBox="0 0 24 24" id="playIcon"><path d="M8 5v14l11-7z"/></svg></button>
-    <div class="bal">
-      <label for="bal">Mix</label>
-      <input type="range" id="bal" min="0" max="100" value="60">
-      <div><span>More music</span><span>More you</span></div>
-    </div>
+  <div class="rstats" id="rstats">
+    <div class="rs rs-score"><b><span id="rsScore">0</span><small>%</small></b><span id="rsScoreL">On pitch</span></div>
+    <div class="rs rs-top"><b id="rsTop">–</b><span>Top note</span></div>
+    <div class="rs rs-held"><b id="rsHeld">–</b><span id="rsHeldL">Longest note</span></div>
   </div>
-  <div class="fx" role="group" aria-label="How your voice sounds">
-    <button data-fx="natural" aria-pressed="false">Natural</button>
-    <button data-fx="studio" aria-pressed="true">Studio</button>
-    <button data-fx="hall" aria-pressed="false">Concert hall</button>
+  <div class="mytake">
+    <div class="player">
+      <button class="play" id="play" aria-label="Play your performance"><svg viewBox="0 0 24 24" id="playIcon"><path d="M8 5v14l11-7z"/></svg></button>
+      <div class="bal">
+        <label for="bal">Mix</label>
+        <input type="range" id="bal" min="0" max="100" value="60">
+        <div><span>More music</span><span>More you</span></div>
+      </div>
+    </div>
+    <div class="stabs" role="tablist" aria-label="Sound">
+      <button role="tab" id="tabVoice" aria-selected="true" aria-controls="fxVoice">Voice <span id="tabVoiceV">Studio</span></button>
+      <button role="tab" id="tabRoom" aria-selected="false" aria-controls="fxRoom">Room <span id="tabRoomV">Bedroom</span></button>
+    </div>
+    <div class="fx" id="fxVoice" role="tabpanel" aria-labelledby="tabVoice">
+      <button data-fx="natural" aria-pressed="false">Natural</button>
+      <button data-fx="studio" aria-pressed="true">Studio</button>
+      <button data-fx="radio" aria-pressed="false">Radio</button>
+    </div>
+    <div class="fx" id="fxRoom" role="tabpanel" aria-labelledby="tabRoom" hidden>
+      <button data-room="bedroom" aria-pressed="true">Bedroom</button>
+      <button data-room="shower" aria-pressed="false">Shower</button>
+      <button data-room="bar" aria-pressed="false">Karaoke bar</button>
+      <button data-room="mall" aria-pressed="false">Empty mall</button>
+      <button data-room="arena" aria-pressed="false">Arena</button>
+    </div>
   </div>
   <button class="coach-btn" id="coachBtn" aria-expanded="false">How did I do?</button>
   <div class="coach" id="coach" hidden>
-    <div class="score"><b id="score">0</b><span id="scoreUnit">% on pitch</span></div>
     <div class="cards" id="cards"></div>
     <div class="graph">
       <canvas id="graph" aria-label="Your pitch compared with the melody"></canvas>
@@ -953,7 +1016,7 @@ function renderWheel(keep){
     const go=$('pickGo');go.disabled=true;go.textContent='No match yet';$('fLen').textContent='–';$('fLvlT').textContent='–';$('fBest').textContent='–';document.querySelectorAll('#fLvl i').forEach(x=>x.classList.remove('on'));
     return;
   }
-  drum.innerHTML=VIEW.map(c=>`<div class="wi"><b>${esc(c.title)}</b><small>${metaOf(c)}</small></div>`).join('');
+  drum.innerHTML=VIEW.map(c=>`<div class="wi${c.song?'':' wide'}"><b>${esc(c.title)}</b><small>${metaOf(c)}</small></div>`).join('');
   wheel.innerHTML='<div class="pad"></div>'+VIEW.map((c,i)=>`<div class="slot" role="option" id="opt${i}" data-i="${i}" aria-label="${esc(c.title+(c.artist?', '+c.artist:''))}"></div>`).join('')+'<div class="pad"></div>';
   rows=[...drum.children];fitTitles();focusIdx=-1;
   const i=Math.max(0,VIEW.indexOf(keep));wheel.scrollTop=i*IH;paintWheel();
@@ -961,7 +1024,7 @@ function renderWheel(keep){
 // Long titles shrink to fit on one line when they're in focus, so nothing gets cut off.
 const FOCUS_PX=40,REST_PX=27;
 function fitTitles(){rows.forEach(el=>{const b=el.firstChild;b.style.fontSize=FOCUS_PX+'px';b.style.fontVariationSettings='"wght" 800, "opsz" 96';
-  const w=b.scrollWidth,cw=b.clientWidth;el._fit=w>cw+1?Math.max(24,Math.floor(FOCUS_PX*cw/w*10)/10):FOCUS_PX;});}
+  const w=b.scrollWidth,cw=b.clientWidth;el._fit=w>cw+1?Math.max(22,Math.floor(FOCUS_PX*cw/w*10)/10):FOCUS_PX;});}
 function setFacts(c){
   const s=c.song,L=s?levelOf(s):0;
   $('fLen').textContent=s?fmtLen(lenOf(s)):'–';
@@ -1005,9 +1068,11 @@ function choose(){const c=VIEW[focusIdx];if(c&&c.song){stopPreview();openSheet(c
 // so you can browse by ear. A clip is 15 seconds from where the singing starts.
 
 function paintPreview(c){
-  const d=$('preview'),ok=!!(c&&c.song);d.setAttribute('aria-disabled',String(!ok));
+  const d=$('preview'),ok=!!(c&&c.song);
+  if(ok){const t=c.title.length>22?c.title.slice(0,21)+'…':c.title;$('recTitle').textContent=t;}d.setAttribute('aria-disabled',String(!ok));
   d.setAttribute('aria-label',!ok?'No preview for this song yet':pv.on?`Stop the preview of ${c.title}`:`Play a preview of ${c.title}`);
 }
+{const g=$('grooves');let h='';for(let r=40;r<97;r+=1.35)h+=`<circle r="${r.toFixed(2)}" stroke-opacity="${(.03+.03*Math.abs(Math.sin(r*.7))).toFixed(3)}"/>`;g.innerHTML=h;}
 function previewIcon(on){$('previewIcon').setAttribute('d',on?'M8 6h3v12H8zM13 6h3v12h-3z':'M9 6.5v11l9-5.5z');}
 function silencePreview(){
   cancelAnimationFrame(pv.raf);clearTimeout(pv.timer);pv.tok++;
@@ -1359,7 +1424,48 @@ function showResults(){
   setCoach(coachPref()&&!quiet,false);
   $('demoNote').classList.toggle('on',demo);
   setSaveState();
-  show('result');cheer(!quiet);
+  show('result');cheer(!quiet);paintStats(quiet);
+  if(!quiet)setTimeout(()=>confetti(sc.acc*Math.min(1,sc.cover/.6)),180);
+}
+// The numbers: score counts up, then your top note and longest note (or how much you sang).
+function paintStats(quiet){
+  const {song,sc}=last,own=inKeyMode(song),key=sc.key||0,box=$('rstats');
+  $('rsScoreL').textContent=own?'In tune':'On pitch';
+  const sung=sc.pts.filter(p=>p.ok).map(p=>p.m+key);
+  $('rsTop').textContent=!quiet&&sung.length>=4?noteName(Math.max(...sung)):'–';
+  const held=own?null:sc.per.filter(o=>o.hits>=4).sort((a,b)=>b.n.d-a.n.d)[0];
+  if(held){$('rsHeldL').textContent='Longest note';$('rsHeld').textContent=quiet?'–':held.n.d.toFixed(1)+'s';}
+  else{$('rsHeldL').textContent='Sung through';$('rsHeld').textContent=quiet?'–':Math.round(sc.cover*100)+'%';}
+  const target=quiet?0:Math.round(sc.acc*100),el=$('rsScore'),t0=performance.now();
+  box.classList.remove('go');void box.offsetWidth;if(!reduceMotion)box.classList.add('go');
+  if(quiet){el.textContent='–';return;}
+  const tick=now=>{const k=reduceMotion?1:Math.min(1,(now-t0)/900);el.textContent=Math.round(target*(1-Math.pow(1-k,3)));if(k<1&&$('result').classList.contains('on'))requestAnimationFrame(tick);};
+  requestAnimationFrame(tick);
+}
+// One burst of confetti in Belt's colors when the results arrive. More for a better take. Never loops.
+function confetti(q){
+  if(reduceMotion)return;
+  const cv=document.createElement('canvas');cv.className='confetti';cv.setAttribute('aria-hidden','true');document.body.appendChild(cv);
+  const dpr=Math.min(2,window.devicePixelRatio||1),W=innerWidth,H=innerHeight;cv.width=W*dpr;cv.height=H*dpr;
+  const g=cv.getContext('2d');g.scale(dpr,dpr);
+  const cols=['#ff5d8f','#3ddc97','#ffb020','#9b8aff','#4cc9f0','#fbf9ff'],n=Math.round(70+110*Math.max(0,Math.min(1,q)));
+  const ps=[...Array(n)].map((_,i)=>{const side=i%2?1:-1;return {x:W/2+side*W*(.15+Math.random()*.3),y:-20-Math.random()*H*.35,
+    vx:(Math.random()-.5)*3.2,vy:2+Math.random()*3.5,r:Math.random()*6.3,vr:(Math.random()-.5)*.25,flip:Math.random()*6.3,vf:.08+Math.random()*.12,
+    w:5+Math.random()*4,h:10+Math.random()*8,round:Math.random()<.3,c:cols[i%cols.length]};});
+  const t0=performance.now();
+  const step=now=>{
+    const t=(now-t0)/1000;g.clearRect(0,0,W,H);let alive=0;
+    for(const p of ps){
+      p.vy=Math.min(p.vy+.09,4.6);p.vx*=.99;p.x+=p.vx+Math.sin(t*2+p.flip)*.6;p.y+=p.vy;p.r+=p.vr;p.flip+=p.vf;
+      if(p.y>H+30)continue;alive++;
+      g.save();g.translate(p.x,p.y);g.rotate(p.r);g.scale(Math.cos(p.flip),1);g.fillStyle=p.c;g.globalAlpha=Math.max(0,Math.min(1,3.6-t));
+      if(p.round){g.beginPath();g.arc(0,0,p.w*.55,0,6.3);g.fill();}
+      else{g.beginPath();g.roundRect?g.roundRect(-p.w/2,-p.h/2,p.w,p.h,p.w/2):g.rect(-p.w/2,-p.h/2,p.w,p.h);g.fill();}
+      g.restore();
+    }
+    if(alive&&t<4&&$('result').classList.contains('on'))requestAnimationFrame(step);else cv.remove();
+  };
+  requestAnimationFrame(step);
 }
 // You did it: your Belter keeps clapping while you're on this page (still, with reduced motion).
 function cheer(on){
@@ -1379,11 +1485,7 @@ function setCoach(open,remember){
   $('coach').hidden=!open;$('coachBtn').setAttribute('aria-expanded',open);
   if(remember!==false)setCoachPref(open);
   if(!open)return;
-  const sc=last.sc,target=Math.round(sc.acc*100),el=$('score'),t0=performance.now();
-  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const tick=now=>{const k=reduce?1:Math.min(1,(now-t0)/700);el.textContent=Math.round(target*(1-Math.pow(1-k,3)));if(k<1)requestAnimationFrame(tick);};
-  requestAnimationFrame(tick);
-  $('scoreUnit').textContent=inKeyMode(last.song)?'% in tune':'% on pitch';$('legendRef').textContent=inKeyMode(last.song)?'Lyrics':'Melody';
+  $('legendRef').textContent=inKeyMode(last.song)?'Lyrics':'Melody';
   renderCards();drawGraph(null);
 }
 $('coachBtn').onclick=()=>{setCoach(true);$('coach').scrollIntoView({behavior:'smooth',block:'start'});};
@@ -1450,6 +1552,7 @@ function impulse(){
 function setPlayIcon(on){$('playIcon').innerHTML=on?'<path d="M7 5h4v14H7zM13 5h4v14h-4z"/>':'<path d="M8 5v14l11-7z"/>';$('play').setAttribute('aria-label',on?'Pause':'Play your performance');}
 function balGains(){const v=+$('bal').value/100,a=v*Math.PI/2;return {music:Math.max(.035,1.15*Math.cos(a)),voice:Math.max(.05,2*Math.sin(a))};}
 function stopMix(){
+  stopTail();
   if(!mix)return;
   try{mix.b.stop();mix.v.stop();}catch(e){}
   mix=null;setPlayIcon(false);if(last&&!$('coach').hidden)drawGraph(null);
@@ -1457,15 +1560,49 @@ function stopMix(){
 // One-tap voice sounds. Each preset sets filter gains and effect sends on one shared chain,
 // so switching while it plays is instant.
 const FX={
-  natural:{hp:60,low:0,pres:0,air:0,thr:0,short:0,long:0,echo:0},
-  studio:{hp:110,low:-2,pres:4,air:3,thr:-24,short:.2,long:0,echo:0},
-  hall:{hp:120,low:-3,pres:2,air:2,thr:-22,short:.05,long:.5,echo:.16}
+  natural:{hp:60,lp:20000,low:0,pres:0,air:0,thr:0,short:0,long:0,echo:0},
+  studio:{hp:110,lp:20000,low:-2,pres:4,air:3,thr:-24,short:.2,long:0,echo:0},
+  radio:{hp:380,lp:3300,low:-6,pres:7,air:0,thr:-30,short:.04,long:0,echo:0}
 };
-let fxName='studio',IR=null;
+// Rooms change where the whole performance happens, music and voice together.
+// wet/dry: how much of the room you hear; lp: muffles the speakers; rate: the empty mall plays it slowed;
+// clap: a crowd at the end of the song (people, seconds).
+const ROOMS={
+  bedroom:{name:'Bedroom',ir:null,wet:0,dry:1,lp:20000,rate:1},
+  shower:{name:'Shower',ir:[1.6,2.6,9000,.006],wet:.55,dry:.85,lp:20000,rate:1},
+  bar:{name:'Karaoke bar',ir:[.9,3.2,3200,.012],wet:.38,dry:.9,lp:6500,rate:1,clap:[14,3.4]},
+  mall:{name:'Empty mall',ir:[5.2,1.7,4200,.03],wet:.85,dry:.45,lp:2400,rate:.9},
+  arena:{name:'Arena',ir:[3.6,2,5200,.06],wet:.6,dry:.75,lp:20000,rate:1,clap:[70,5.5]}
+};
+let fxName=FX[pref('voiceFx','studio')]?pref('voiceFx','studio'):'studio',roomName=ROOMS[pref('room','bedroom')]?pref('room','bedroom'):'bedroom',IR=null;
+const roomIR={};
+// A room's echo: decaying noise, darker as it fades (lp), after a short gap before the first reflections (pre).
+function roomImpulse(key){
+  if(roomIR[key])return roomIR[key];
+  const [sec,decay,lp,pre]=ROOMS[key].ir,sr=ctx.sampleRate,len=Math.floor(sr*(sec+pre)),b=ctx.createBuffer(2,len,sr),p0=Math.floor(pre*sr);
+  for(let c=0;c<2;c++){const d=b.getChannelData(c);let y=0;for(let i=p0;i<len;i++){const k=(i-p0)/(len-p0),a=Math.exp(-2*Math.PI*lp*(1-.6*k)/sr);y=(1-a)*(Math.random()*2-1)+a*y;d[i]=y*Math.pow(1-k,decay)*3;}}
+  return roomIR[key]=b;
+}
+// Applause: lots of short, bright noise bursts, building up then fading out.
+const clapBufs={};
+function applause(key){
+  if(clapBufs[key])return clapBufs[key];
+  const [people,sec]=ROOMS[key].clap,sr=ctx.sampleRate,len=Math.floor(sr*sec),b=ctx.createBuffer(2,len,sr);
+  for(let c=0;c<2;c++){const d=b.getChannelData(c);
+    for(let p=0;p<people/2;p++){const rate=3.2+Math.random()*2.4,f=900+Math.random()*1800,a=Math.exp(-2*Math.PI*f/sr),loud=.5+Math.random()*.5;
+      let t=Math.random()*.35;
+      while(t<sec-.05){const env=Math.min(1,t/.5)*Math.min(1,Math.pow((sec-t)/(sec*.55),1.6)),st=Math.floor(t*sr),n=Math.floor(.03*sr);let y=0;
+        for(let i=0;i<n&&st+i<len;i++){y=(1-a)*(Math.random()*2-1)+a*y;const x=Math.random()*2-1;d[st+i]+=(x-y)*Math.exp(-i/(sr*.007))*loud*env*.5/Math.sqrt(people/14);}
+        t+=1/rate*(.85+Math.random()*.3);}
+    }}
+  return clapBufs[key]=b;
+}
+let tail=null;
+function stopTail(){if(tail){try{tail.stop();}catch(e){}tail=null;}}
 function impulseLen(sec,decay){const sr=ctx.sampleRate,len=Math.floor(sr*sec),b=ctx.createBuffer(2,len,sr);for(let c=0;c<2;c++){const d=b.getChannelData(c);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,decay);}return b;}
 function applyFx(m,instant){
   const f=FX[fxName],now=ctx.currentTime,set=(p,v)=>instant?p.setValueAtTime(v,now):p.setTargetAtTime(v,now,.04);
-  set(m.hp.frequency,f.hp);set(m.low.gain,f.low);set(m.pres.gain,f.pres);set(m.air.gain,f.air);
+  set(m.hp.frequency,f.hp);set(m.lp.frequency,f.lp);set(m.low.gain,f.low);set(m.pres.gain,f.pres);set(m.air.gain,f.air);
   set(m.comp.threshold,f.thr);set(m.comp.ratio,f.thr?4:1);
   set(m.sShort.gain,f.short);set(m.sLong.gain,f.long);set(m.sEcho.gain,f.echo);
 }
@@ -1478,26 +1615,50 @@ function playMix(from,until){
   const v=ctx.createBufferSource();v.buffer=vb;
   const gb=ctx.createGain(),gv=ctx.createGain(),{music,voice:vg}=balGains();gb.gain.value=music;gv.gain.value=vg;
   const bq=(type,f,q)=>{const n=ctx.createBiquadFilter();n.type=type;n.frequency.value=f;if(q)n.Q.value=q;return n;};
-  const hp=bq('highpass',90),low=bq('lowshelf',250),pres=bq('peaking',3200,.9),air=bq('highshelf',10000);
+  const hp=bq('highpass',90),lp=bq('lowpass',20000,.7),low=bq('lowshelf',250),pres=bq('peaking',3200,.9),air=bq('highshelf',10000);
   const comp=ctx.createDynamicsCompressor();comp.knee.value=12;
   const rvS=ctx.createConvolver();rvS.buffer=IR.short;const rvL=ctx.createConvolver();rvL.buffer=IR.long;
   const sShort=ctx.createGain(),sLong=ctx.createGain(),sEcho=ctx.createGain();
   const dl=ctx.createDelay(1);dl.delayTime.value=.28;const fb=ctx.createGain();fb.gain.value=.3;
-  b.connect(gb);gb.connect(ctx.destination);
-  v.connect(hp);hp.connect(low);low.connect(pres);pres.connect(air);air.connect(comp);comp.connect(gv);gv.connect(ctx.destination);
-  gv.connect(sShort);sShort.connect(rvS);rvS.connect(ctx.destination);
-  gv.connect(sLong);sLong.connect(rvL);rvL.connect(ctx.destination);
-  gv.connect(sEcho);sEcho.connect(dl);dl.connect(fb);fb.connect(dl);dl.connect(ctx.destination);
+  // everything plays into the room: music, voice and the voice's own effects
+  const R=ROOMS[roomName],room=ctx.createGain(),muff=bq('lowpass',R.lp,.7),rDry=ctx.createGain(),rWet=ctx.createGain();
+  rDry.gain.value=R.dry;rWet.gain.value=R.wet;room.connect(muff);muff.connect(rDry);rDry.connect(ctx.destination);
+  if(R.ir){const cv=ctx.createConvolver();cv.buffer=roomImpulse(roomName);muff.connect(cv);cv.connect(rWet);rWet.connect(ctx.destination);}
+  b.connect(gb);gb.connect(room);
+  v.connect(hp);hp.connect(lp);lp.connect(low);low.connect(pres);pres.connect(air);air.connect(comp);comp.connect(gv);gv.connect(room);
+  gv.connect(sShort);sShort.connect(rvS);rvS.connect(room);
+  gv.connect(sLong);sLong.connect(rvL);rvL.connect(room);
+  gv.connect(sEcho);sEcho.connect(dl);dl.connect(fb);fb.connect(dl);dl.connect(room);
+  const rate=R.rate;b.playbackRate.value=rate;v.playbackRate.value=rate;
   const off=from!=null?from:Math.max(0,song.firstT-(song.own?2:song.spb*1.5)),at=ctx.currentTime+.08,end=until!=null?until:Math.min(song.own?song.endT:song.lastEnd+.8,last.until!=null?last.until+.8:1e9);
   b.start(at,off);v.start(at,off);
-  mix={b,v,gb,gv,at,off,song,hp,low,pres,air,comp,sShort,sLong,sEcho};applyFx(mix,true);setPlayIcon(true);
-  b.onended=()=>{if(mix&&mix.b===b)stopMix();};
-  const tick=()=>{if(!mix||mix.b!==b)return;const t=ctx.currentTime-(ctx.outputLatency||0)-at+off;if(!$('coach').hidden)drawGraph(t);if(t>end){stopMix();return;}requestAnimationFrame(tick);};
+  mix={b,v,gb,gv,at,off,song,hp,lp,low,pres,air,comp,sShort,sLong,sEcho,room};applyFx(mix,true);setPlayIcon(true);
+  // a crowd that claps when the whole song ends (not for the short "Hear it" clips)
+  const whole=until==null;
+  if(whole&&R.clap){const c=ctx.createBufferSource();c.buffer=applause(roomName);const cg=ctx.createGain();cg.gain.value=roomName==='arena'?.9:.7;c.connect(cg);cg.connect(room);c.start(at+(end-off)/rate-.15);tail=c;}
+  b.onended=()=>{if(mix&&mix.b===b)endMix();};
+  const tick=()=>{if(!mix||mix.b!==b)return;const t=(ctx.currentTime-(ctx.outputLatency||0)-at)*rate+off;if(!$('coach').hidden)drawGraph(t);if(t>end){endMix();return;}requestAnimationFrame(tick);};
   requestAnimationFrame(tick);
 }
-document.querySelectorAll('.fx button').forEach(bt=>bt.onclick=()=>{
-  fxName=bt.dataset.fx;document.querySelectorAll('.fx button').forEach(x=>x.setAttribute('aria-pressed',x===bt));
+// the song finished on its own: stop the music but let the crowd's applause ring out
+function endMix(){const t=tail;tail=null;stopMix();tail=t;}
+function paintSound(){
+  document.querySelectorAll('#fxVoice button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.fx===fxName));
+  document.querySelectorAll('#fxRoom button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.room===roomName));
+  $('tabVoiceV').textContent=$('fxVoice').querySelector(`[data-fx="${fxName}"]`).textContent;$('tabRoomV').textContent=ROOMS[roomName].name;
+}
+paintSound();
+document.querySelectorAll('#fxVoice button').forEach(bt=>bt.onclick=()=>{
+  fxName=bt.dataset.fx;setPref('voiceFx',fxName);paintSound();
   if(mix)applyFx(mix,false);else playMix();
+});
+// a new room rebuilds the sound, so playback restarts from where you were
+document.querySelectorAll('#fxRoom button').forEach(bt=>bt.onclick=()=>{
+  roomName=bt.dataset.room;setPref('room',roomName);paintSound();
+  if(mix){const t=Math.max(mix.off,(ctx.currentTime-mix.at)*(mix.b.playbackRate.value)+mix.off);playMix(t);}else playMix();
+});
+document.querySelectorAll('.stabs [role=tab]').forEach(tb=>tb.onclick=()=>{
+  document.querySelectorAll('.stabs [role=tab]').forEach(x=>{const on=x===tb;x.setAttribute('aria-selected',on);$(x.getAttribute('aria-controls')).hidden=!on;});
 });
 $('play').onclick=()=>mix?stopMix():playMix();
 $('bal').oninput=()=>{if(!mix)return;const {music,voice}=balGains();mix.gb.gain.setTargetAtTime(music,ctx.currentTime,.05);mix.gv.gain.setTargetAtTime(voice,ctx.currentTime,.05);};
