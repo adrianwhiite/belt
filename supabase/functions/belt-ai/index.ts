@@ -3,6 +3,8 @@
 //   split_start  Demucs (open source, run on Replicate) separates a song into vocals + the rest
 //   split_poll   checks the separation
 //   fetch_output streams one separated part back to the app
+//   words_start  WhisperX (open source, on Replicate) times every sung word on the separated vocal
+//   words_poll   checks it and returns the words with their times
 // Only signed-in Belt users can call it.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -33,6 +35,8 @@ Deno.serve(async (req) => {
     if (body.action === "split_start") return json(await splitStart(body));
     if (body.action === "split_poll") return json(await splitPoll(body));
     if (body.action === "fetch_output") return await fetchOutput(body);
+    if (body.action === "words_start") return json(await wordsStart(body));
+    if (body.action === "words_poll") return json(await wordsPoll(body));
     return json({ error: "Unknown action" }, 400);
   } catch (e) {
     return json({ error: String((e as Error)?.message || e) }, 500);
@@ -123,7 +127,7 @@ async function askGemini(key: string, payload: unknown) {
 /* ---------- Replicate: Demucs separation, a few cents per song ---------- */
 const RP = "https://api.replicate.com/v1";
 const rpHeaders = () => ({ Authorization: `Bearer ${env("REPLICATE_API_TOKEN")}`, "Content-Type": "application/json" });
-let versionCache = "";
+const versions: Record<string, string> = {};
 
 async function rp(path: string, init?: RequestInit) {
   const r = await fetch(RP + path, { ...init, headers: rpHeaders() });
@@ -131,14 +135,14 @@ async function rp(path: string, init?: RequestInit) {
   if (!r.ok) throw new Error(j?.detail || j?.title || `Replicate error ${r.status}`);
   return j;
 }
-async function demucsVersion() {
-  if (versionCache) return versionCache;
-  const model = Deno.env.get("DEMUCS_MODEL") || "cjwbw/demucs";
+async function latest(model: string) {
+  if (versions[model]) return versions[model];
   const m = await rp(`/models/${model}`);
-  versionCache = m?.latest_version?.id;
-  if (!versionCache) throw new Error(`Couldn't find the ${model} model on Replicate`);
-  return versionCache;
+  const v = m?.latest_version?.id;
+  if (!v) throw new Error(`Couldn't find the ${model} model on Replicate`);
+  return (versions[model] = v);
 }
+const demucsVersion = () => latest(Deno.env.get("DEMUCS_MODEL") || "cjwbw/demucs");
 
 async function splitStart({ url }: { url: string }) {
   const version = await demucsVersion();
@@ -168,4 +172,23 @@ async function fetchOutput({ id, model }: { id: string; model: string }) {
   const r = await fetch(link);
   if (!r.ok || !r.body) return json({ error: `Couldn't download the ${model} part` }, 502);
   return new Response(r.body, { headers: { ...CORS, "Content-Type": "application/octet-stream" } });
+}
+
+// Word timing: run WhisperX on the separated vocal, with the lyrics as a hint, and keep word-level times.
+async function wordsStart({ splitId, prompt }: { splitId: string; prompt?: string }) {
+  const sp = await rp(`/predictions/${encodeURIComponent(splitId)}`);
+  const vocal = sp?.output?.vocals;
+  if (!vocal) throw new Error("The separated vocal isn't ready yet");
+  const version = await latest(Deno.env.get("WHISPERX_MODEL") || "victor-upmeet/whisperx");
+  const p = await rp("/predictions", {
+    method: "POST",
+    body: JSON.stringify({ version, input: { audio_file: vocal, language: "en", align_output: true, ...(prompt ? { initial_prompt: prompt.slice(0, 800) } : {}) } }),
+  });
+  return { id: p.id };
+}
+async function wordsPoll({ id }: { id: string }) {
+  const p = await rp(`/predictions/${encodeURIComponent(id)}`);
+  if (p.status === "succeeded") return { status: "completed", data: p.output };
+  if (p.status === "failed" || p.status === "canceled") return { status: "error", error: p.error || "Word timing failed" };
+  return { status: "processing" };
 }
