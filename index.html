@@ -140,6 +140,26 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
 .fx button{min-height:44px;border-radius:99px;font-size:15px;font-weight:700;color:var(--muted)}
 .fx button[aria-pressed=true]{background:var(--song);color:var(--ink)}
 .actions{display:grid;gap:10px;margin-top:4px}
+.mine-btn{font-size:15px;font-weight:700;padding:8px 14px;border-radius:99px;background:rgba(29,22,49,.1)}
+.text-btn{font-size:15px;font-weight:600;color:var(--muted);padding:8px}
+.mine-title{flex:1;font-size:30px;font-weight:800;letter-spacing:-.03em}
+#mine{overflow-y:auto;gap:14px}
+.mine-who{font-size:15px;color:var(--muted)}
+.takes{list-style:none;display:grid;gap:10px}
+.take{display:flex;align-items:center;gap:14px;background:var(--ink-2);border-radius:20px;padding:14px 14px 14px 16px}
+.take-open{flex:1;display:flex;align-items:center;gap:14px;text-align:left;min-width:0}
+.take-dot{width:14px;height:44px;border-radius:7px;flex:none}
+.take-main{min-width:0}
+.take-title{display:block;font-size:20px;font-weight:800;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.take-meta{display:block;font-size:14px;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums}
+.take-del{font-size:14px;font-weight:600;color:var(--muted);padding:8px}
+.empty{color:var(--muted);font-size:17px;line-height:1.45;padding:24px 4px}
+.sheet.auth{background:var(--paper)}
+.btn.google{gap:12px}
+.btn.google svg{width:22px;height:22px;background:#fff;border-radius:50%;padding:2px}
+.btn.ghost-ink{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 2px rgba(29,22,49,.2)}
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 24px);transform:translate(-50%,20px);background:var(--paper);color:var(--ink);font-weight:700;font-size:16px;padding:14px 20px;border-radius:99px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;box-shadow:0 8px 30px rgba(10,6,22,.35);max-width:calc(100% - 40px);text-align:center}
+.toast.on{opacity:1;transform:translate(-50%,0)}
 .note{font-size:14px;line-height:1.45;color:var(--muted);background:var(--ink-2);border-radius:16px;padding:12px 14px;display:none}
 .note.on{display:block}
 
@@ -169,6 +189,7 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
   <header class="pick-head">
     <button class="icon" id="pickBack" aria-label="Back to start">&#8592;</button>
     <h2>Pick a song</h2>
+    <button class="mine-btn" id="mineBtn">My songs</button>
   </header>
   <div class="seg" role="group" aria-label="Filter songs">
     <button id="fReady" data-f="ready" aria-pressed="true">Ready to sing</button>
@@ -251,11 +272,31 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
   </div>
   <p class="note" id="demoNote">Preview mode: this page can't use the mic here, so you're hearing a simulated singer. Open the hosted version of the prototype to record your own voice.</p>
   <div class="actions">
+    <button class="btn" id="save" hidden>Save this take</button>
     <button class="btn" id="again">Sing again</button>
     <button class="btn ghost" id="another">Pick another song</button>
   </div>
 </section>
 
+<section id="mine" class="screen" aria-label="My songs">
+  <header class="res-head">
+    <button class="icon" id="mineBack" aria-label="Back to songs">&#8592;</button>
+    <h2 class="mine-title">My songs</h2>
+    <button class="text-btn" id="signOut">Sign out</button>
+  </header>
+  <p class="mine-who" id="mineWho"></p>
+  <ul class="takes" id="takes"></ul>
+</section>
+
+<div class="sheet auth" id="authSheet" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+  <h3 id="authTitle">Keep your takes</h3>
+  <p class="sheet-first">Sign in once and your saved takes will be here next time.</p>
+  <button class="btn ink google" id="google"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.4h6.5a5.6 5.6 0 0 1-2.4 3.6v3h3.9c2.3-2.1 3.5-5.2 3.5-8.7z"/><path fill="#34A853" d="M12 24c3.2 0 6-1.1 8-2.9l-3.9-3c-1.1.7-2.5 1.2-4.1 1.2-3.1 0-5.8-2.1-6.7-5H1.3v3.1A12 12 0 0 0 12 24z"/><path fill="#FBBC05" d="M5.3 14.3a7.2 7.2 0 0 1 0-4.6V6.6H1.3a12 12 0 0 0 0 10.8z"/><path fill="#EA4335" d="M12 4.8c1.8 0 3.3.6 4.6 1.8l3.4-3.4A12 12 0 0 0 1.3 6.6l4 3.1c.9-2.9 3.6-4.9 6.7-4.9z"/></svg>Continue with Google</button>
+  <button class="btn ghost-ink" id="authCancel">Not now</button>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.1"></script>
 <script>
 /* ---------- Songs (all public domain in the US; melodies and lyrics pre-1929) ---------- */
 const SONGS=[
@@ -731,6 +772,7 @@ function showResults(){
   const [v,sub]=verdictFor(sc);
   $('verdict').textContent=v;$('sub').textContent=sub;
   $('demoNote').classList.toggle('on',demo);
+  setSaveState();
   show('result');
   const target=Math.round(sc.acc*100),el=$('score'),t0=performance.now();
   const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -813,6 +855,104 @@ $('bal').oninput=()=>{if(!mix)return;const {music,voice}=balGains();mix.gb.gain.
 $('again').onclick=async()=>{stopMix();ensureCtx();current=last.song;tracks=await cache[current.id];startSong();};
 $('another').onclick=$('resBack').onclick=()=>{stopMix();show('pick');};
 window.addEventListener('resize',()=>{if(last&&$('result').classList.contains('on'))drawGraph(null);});
+
+/* ---------- Accounts (Supabase + Google). Singing never needs an account; Save does. ---------- */
+const SB_URL='https://wksewqwujfrqmqliltbn.supabase.co',SB_KEY='sb_publishable_-hWzU5dnarN0XczEFFpmOQ_NnHLooy5';
+let sb=null,user=null;
+try{if(window.supabase)sb=window.supabase.createClient(SB_URL,SB_KEY);}catch(e){sb=null;}
+const SONG_BY_ID=Object.fromEntries(SONGS.map(s=>[s.id,s]));
+function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('on'),2600);}
+
+// Keep a take in this browser while Google sign-in leaves the page and comes back.
+const idb=()=>new Promise((res,rej)=>{const r=indexedDB.open('belt',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});
+async function kv(op,key,val){try{const db=await idb();return await new Promise((res,rej)=>{const tx=db.transaction('kv',op==='get'?'readonly':'readwrite'),st=tx.objectStore('kv');const r=op==='get'?st.get(key):op==='put'?st.put(val,key):st.delete(key);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}catch(e){return null;}}
+
+function toWav(f32,srIn){
+  const sr=22050,ratio=srIn/sr,n=Math.floor(f32.length/ratio),buf=new ArrayBuffer(44+n*2),v=new DataView(buf);
+  const w=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));};
+  w(0,'RIFF');v.setUint32(4,36+n*2,true);w(8,'WAVE');w(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+  v.setUint32(24,sr,true);v.setUint32(28,sr*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);w(36,'data');v.setUint32(40,n*2,true);
+  for(let i=0;i<n;i++){const x=i*ratio,a=Math.floor(x),f=x-a,s=(f32[a]||0)*(1-f)+(f32[a+1]||0)*f;v.setInt16(44+i*2,Math.max(-1,Math.min(1,s))*32767,true);}
+  return new Blob([buf],{type:'audio/wav'});
+}
+function setSaveState(){
+  const b=$('save');b.hidden=demo||!sb;
+  b.disabled=!!(last&&last.saved);b.textContent=last&&last.saved?'Saved to My songs':'Save this take';
+}
+async function uploadTake(t){
+  const path=`${user.id}/${Date.now()}-${t.songId}.wav`;
+  const up=await sb.storage.from('takes').upload(path,t.blob,{contentType:'audio/wav'});
+  if(up.error)throw up.error;
+  const ins=await sb.from('takes').insert({song_id:t.songId,song_title:t.title,score:t.score,key_shift:t.key,audio_path:path});
+  if(ins.error)throw ins.error;
+}
+async function saveTake(){
+  if(!last||last.saved)return;
+  const t={songId:last.song.id,title:last.song.title,score:Math.round(last.sc.acc*100),key:last.sc.key||0,blob:toWav(last.voice,ctx.sampleRate)};
+  if(!user){await kv('put','pending',t);openAuth();return;}
+  const b=$('save');b.disabled=true;b.textContent='Saving';
+  try{await uploadTake(t);last.saved=true;setSaveState();toast('Saved to My songs');}
+  catch(e){b.disabled=false;b.textContent='Save this take';toast('Couldn’t save. Check your connection and try again.');}
+}
+function openAuth(){$('scrim').classList.add('on');$('authSheet').classList.add('on');$('google').focus();}
+function closeAuth(){$('authSheet').classList.remove('on');if(!$('sheet').classList.contains('on'))$('scrim').classList.remove('on');}
+async function signIn(){
+  if(!sb){toast('Sign-in isn’t available here.');return;}
+  const {error}=await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+location.pathname}});
+  if(error)toast('Google sign-in didn’t start. Try again.');
+}
+async function flushPending(){
+  const t=await kv('get','pending');if(!t||!user)return;
+  try{await uploadTake(t);await kv('del','pending');toast('Saved to My songs');openMine();}
+  catch(e){toast('Couldn’t save your take. Try again from the song.');}
+}
+async function openMine(){
+  if(!user){openAuth();return;}
+  stopMix();show('mine');
+  $('mineWho').textContent=`Signed in as ${user.email||'you'}`;
+  const list=$('takes');list.innerHTML='<li class="empty">Loading your takes</li>';
+  const {data,error}=await sb.from('takes').select('*').order('created_at',{ascending:false});
+  if(error){list.innerHTML='<li class="empty">Couldn’t load your takes. Check your connection and try again.</li>';return;}
+  if(!data.length){list.innerHTML='<li class="empty">No saved takes yet. Sing a song, then tap Save this take.</li>';return;}
+  const fmt=new Intl.DateTimeFormat(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+  list.innerHTML=data.map(r=>{const s=SONG_BY_ID[r.song_id];return `<li class="take" data-id="${r.id}">
+    <button class="take-open" data-path="${esc(r.audio_path)}" data-song="${esc(r.song_id)}"><span class="take-dot" style="background:${s?s.color:'#b6acd6'}"></span>
+    <span class="take-main"><span class="take-title">${esc(r.song_title)}</span><span class="take-meta">${r.score??'–'}% on pitch • ${fmt.format(new Date(r.created_at))}</span></span></button>
+    <button class="take-del" data-path="${esc(r.audio_path)}" aria-label="Delete this take of ${esc(r.song_title)}">Delete</button></li>`;}).join('');
+}
+async function openTake(path,songId){
+  const song=SONG_BY_ID[songId];if(!song)return;
+  ensureCtx();$('busy').classList.add('on');
+  try{
+    const {data,error}=await sb.storage.from('takes').download(path);if(error)throw error;
+    const ab=await ctx.decodeAudioData(await data.arrayBuffer());
+    if(!cache[song.id])cache[song.id]=renderTracks(song);
+    tracks=await cache[song.id];current=song;demo=false;
+    document.documentElement.style.setProperty('--song',song.color);
+    const total=Math.ceil(song.dur*ctx.sampleRate),voice=new Float32Array(total);voice.set(ab.getChannelData(0).subarray(0,total));
+    last={song,voice,sc:scoreIt(song,detectPitch(voice,ctx.sampleRate)),saved:true};
+    $('busy').classList.remove('on');showResults();
+  }catch(e){$('busy').classList.remove('on');toast('Couldn’t open that take.');}
+}
+$('takes').onclick=async e=>{
+  const o=e.target.closest('.take-open');if(o){openTake(o.dataset.path,o.dataset.song);return;}
+  const d=e.target.closest('.take-del');if(!d)return;
+  const li=d.closest('.take');d.disabled=true;
+  await sb.storage.from('takes').remove([d.dataset.path]);
+  const {error}=await sb.from('takes').delete().eq('id',li.dataset.id);
+  if(error){d.disabled=false;toast('Couldn’t delete that take.');return;}
+  li.remove();if(!$('takes').children.length)$('takes').innerHTML='<li class="empty">No saved takes yet. Sing a song, then tap Save this take.</li>';
+};
+$('save').onclick=saveTake;
+$('google').onclick=signIn;
+$('authCancel').onclick=async()=>{await kv('del','pending');closeAuth();};
+$('mineBtn').onclick=openMine;
+$('mineBack').onclick=()=>show('pick');
+$('signOut').onclick=async()=>{await sb.auth.signOut();user=null;show('pick');toast('Signed out');};
+$('scrim').addEventListener('click',closeAuth);
+if(sb){
+  sb.auth.onAuthStateChange((ev,session)=>{const was=user;user=session?session.user:null;if(user&&!was)flushPending();});
+}else{$('mineBtn').hidden=true;}
 </script>
 </body>
 </html>
