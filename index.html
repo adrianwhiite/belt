@@ -1421,10 +1421,9 @@ function showResults(){
   const quiet=sc.cover<.15;
   $('verdict').textContent=quiet?'We couldn\u2019t hear you':FUN[Math.floor(Math.random()*FUN.length)];
   $('sub').textContent=quiet?'Check that the mic is allowed, then sing out a little louder.':'Hit play to hear yourself, then pick a sound.';
-  setCoach(coachPref()&&!quiet,false);
   $('demoNote').classList.toggle('on',demo);
   setSaveState();
-  show('result');cheer(!quiet);paintStats(quiet);
+  show('result');setCoach(coachPref()&&!quiet,false);cheer(!quiet);paintStats(quiet);
   if(!quiet)setTimeout(()=>confetti(sc.acc*Math.min(1,sc.cover/.6)),180);
 }
 // The numbers: score counts up, then your top note and longest note (or how much you sang).
@@ -1530,7 +1529,8 @@ function renderCards(){
 $('cards').onclick=e=>{const b=e.target.closest('.card-hear');if(!b)return;const m=last.booth[+b.dataset.i].m;playMix(Math.max(0,m.t0-.4),m.t1+.6);};
 function drawGraph(playT){
   const {song,sc}=last,cv=$('graph'),dpr=window.devicePixelRatio||1;
-  const w=cv.clientWidth,h=cv.clientHeight;cv.width=w*dpr;cv.height=h*dpr;
+  const w=cv.clientWidth,h=cv.clientHeight;if(w<20||h<20)return; // not on screen yet
+  cv.width=w*dpr;cv.height=h*dpr;
   const g=cv.getContext('2d');g.scale(dpr,dpr);g.clearRect(0,0,w,h);
   const own=inKeyMode(song),t0=song.firstT-.3,t1=Math.min(song.lastEnd,last.until??1e9)+.3;
   let ms=own?sc.pts.map(p=>p.m).sort((a,b)=>a-b):song.notes.map(n=>n.midi);
