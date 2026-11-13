@@ -393,7 +393,7 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
     <p class="fine-ink" id="ownVocalHelp" style="margin-top:-6px">The vocal file lets Belt show every note and grade you on it. In Karaoke Version, open the song in My Files, solo Lead Vocal and download. It’s free once you own the track.</p>
     <button class="btn ink" id="ownGo">Sing it</button>
     <button class="own-wrong" id="ownWrong">Not the right song?</button>
-    <p class="fine-ink">Your track stays on this device. Lyrics come from LRCLIB, for personal practice.</p>
+    <p class="fine-ink" id="ownFine">Your track stays on this device. Lyrics come from LRCLIB, for personal practice.</p>
   </div>
   <form class="own-form" id="ownForm" hidden>
     <h3>Which song is it?</h3>
@@ -1079,8 +1079,8 @@ function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('on');c
 const idb=()=>new Promise((res,rej)=>{const r=indexedDB.open('belt',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});
 async function kv(op,key,val){try{const db=await idb();return await new Promise((res,rej)=>{const tx=db.transaction('kv',op==='get'?'readonly':'readwrite'),st=tx.objectStore('kv');const r=op==='get'?st.get(key):op==='put'?st.put(val,key):st.delete(key);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}catch(e){return null;}}
 
-function toWav(f32,srIn){
-  const sr=22050,ratio=srIn/sr,n=Math.floor(f32.length/ratio),buf=new ArrayBuffer(44+n*2),v=new DataView(buf);
+function toWav(f32,srIn,srOut){
+  const sr=srOut||22050,ratio=srIn/sr,n=Math.floor(f32.length/ratio),buf=new ArrayBuffer(44+n*2),v=new DataView(buf);
   const w=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));};
   w(0,'RIFF');v.setUint32(4,36+n*2,true);w(8,'WAVE');w(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
   v.setUint32(24,sr,true);v.setUint32(28,sr*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);w(36,'data');v.setUint32(40,n*2,true);
@@ -1362,6 +1362,8 @@ function buildOwnLines(song){
     const syl=words.map((w,j)=>{const a=st+sing*acc/tot;acc+=w.trim().length+1;return {text:j<words.length-1?w:w.trimEnd(),start:a,end:st+sing*acc/tot};});
     lines.push({syl,start:st,end:st+sing,text});
   }
+  if(song.wt)lines.forEach((L,k)=>{const w=song.wt[k];if(!w||w.length!==L.syl.length)return;
+    L.syl.forEach((x,j)=>{x.start=w[j][0];x.end=Math.max(w[j][0]+.08,w[j][1]);});L.start=L.syl[0].start;L.end=L.syl[L.syl.length-1].end;L.ai=true;});
   if(song.notes&&song.notes.length)fitWordsToNotes(lines,song.notes);
   song.lines=lines;song.lead=song.firstT=lines.length?lines[0].start:0;
   song.lastEnd=lines.length?lines[lines.length-1].end:song.len;
@@ -1371,6 +1373,7 @@ function fitWordsToNotes(lines,ns){
   const ph=ns.filter((n,i)=>i===0||n.t-(ns[i-1].t+ns[i-1].d)>.2).map(n=>n.t);
   const snap=t=>{let b=t,bd=.7;for(const q of ph){const d=Math.abs(q-t);if(d<bd){bd=d;b=q;}}return b;};
   lines.forEach((L,i)=>{
+    if(L.ai)return;
     const nx=lines[i+1],w0=snap(L.start)-.05,w1=nx?snap(nx.start)-.05:L.start+10;
     const segs=ns.filter(n=>n.t+n.d>w0&&n.t<w1).map(n=>[Math.max(n.t,w0),Math.min(n.t+n.d,w1)]);
     const tot=segs.reduce((a,g)=>a+g[1]-g[0],0);if(tot<.25)return;
@@ -1416,7 +1419,7 @@ function alignToMelody(notes,lrc){
 }
 function makeOwnSong(rec){
   const s={id:rec.id,title:rec.title,artist:rec.artist,year:rec.year,album:rec.album,color:rec.color,own:true,vibe:'Your own track',
-    lrc:rec.lrc,autoOff:rec.autoOff||0,userOff:0,an:rec.an,len:rec.an.dur,dur:rec.an.dur,endT:rec.an.dur-.05,notes:rec.notes||[]};
+    lrc:rec.lrc,autoOff:rec.autoOff||0,userOff:0,an:rec.an,len:rec.an.dur,dur:rec.an.dur,endT:rec.an.dur-.05,notes:rec.notes||[],wt:rec.wt||null};
   setRange(s);buildOwnLines(s);buildMood(s);return s;
 }
 async function loadOwnTracks(song){
@@ -1543,9 +1546,12 @@ function ownFound(){
   const segs=an.segs,ch=segs.length-1;
   const facts=[`Synced lyrics, ${f.lrc.filter(l=>l.text).length} lines`,
     segs.length?(ch?`Starts in ${keyName(segs[0].k)}, then changes key ${ch===1?'once':ch+' times'}`:`In ${keyName(segs[0].k)}`):'',
-    pendingOwn.vocal?`Melody read from the vocal, ${pendingOwn.vocal.notes.length} notes`:`${fmtLen(an.dur)} long`];
+    pendingOwn.vocal?`Melody read from the vocal, ${pendingOwn.vocal.notes.length} notes`:`${fmtLen(an.dur)} long`,
+    pendingOwn.vocal&&pendingOwn.vocal.wt?'Every word synced to the singer':'',
+    ...((pendingOwn.vocal&&pendingOwn.vocal.ai&&pendingOwn.vocal.ai.problems)||[]).slice(0,2).map(x=>'Heads up: '+x)];
   $('ownFacts').innerHTML=facts.filter(Boolean).map(x=>`<li>${esc(x)}</li>`).join('');
   const hasV=!!pendingOwn.vocal;
+  $('ownFine').textContent=aiOn()?'Your track stays on this device. The vocal is sent briefly to our sync partner, then deleted. Lyrics come from LRCLIB, for personal practice.':'Your track stays on this device. Lyrics come from LRCLIB, for personal practice.';
   $('ownVocal').hidden=$('ownVocalHelp').hidden=hasV;$('ownGo').hidden=!hasV;
   (hasV?$('ownGo'):$('ownVocal')).focus();
 }
@@ -1589,7 +1595,7 @@ $('ownGo').onclick=async()=>{
   const h=parseInt(p.id.slice(4,10),16)||0;
   // a backing track a few seconds longer than the original usually has a count-in at the start
   const rec={id:p.id,title:f.title,artist:f.artist,album:f.album,year:f.year,color:OWN_PAL[h%OWN_PAL.length],lrc:f.lrc,
-    autoOff:al!=null?al:d>.8&&d<8?+d.toFixed(2):0,userOff:0,an:p.an,blob:p.file,added:Date.now(),vocal:v?v.file:null,notes:v?v.notes:null};
+    autoOff:al!=null?al:d>.8&&d<8?+d.toFixed(2):0,userOff:0,an:p.an,blob:p.file,added:Date.now(),vocal:v?v.file:null,notes:v?v.notes:null,wt:v?v.wt:null,ai:v?v.ai:null};
   const song=makeOwnSong(rec);cache[song.id]=Promise.resolve({back:p.buf,guide:v?v.vb:null});
   await kv('put','track:'+rec.id,rec);
   const ids=(await kv('get','own:list'))||[];if(!ids.includes(rec.id)){ids.unshift(rec.id);await kv('put','own:list',ids);}
@@ -1597,6 +1603,66 @@ $('ownGo').onclick=async()=>{
   filter='ready';document.querySelectorAll('.seg button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.f==='ready'));
   renderWheel(item);openSheet(song);
 };
+/* Smart setup through the belt-ai server function (keys live there, never in the app) */
+const aiOn=()=>!!(sb&&user);
+async function ai(action,payload){const {data,error}=await sb.functions.invoke('belt-ai',{body:{action,...payload}});if(error)throw error;if(data&&data.error)throw new Error(data.error);return data;}
+const b64=blob=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result).split(',')[1]);r.onerror=rej;r.readAsDataURL(blob);});
+function clipWav(buf,t0,dur){const x=monoOf(buf),sr=buf.sampleRate,a=Math.max(0,Math.floor(t0*sr));return toWav(x.subarray(a,Math.min(x.length,a+Math.floor(dur*sr))),sr,16000);}
+async function aiJudge(backBuf,vb,notes,guess){
+  const v0=Math.max(0,(notes[0]?notes[0].t:0)-2);
+  return ai('judge',{backing:await b64(clipWav(backBuf,0,45)),vocal:await b64(clipWav(vb,v0,45)),guess:{title:guess.title,artist:guess.artist}});
+}
+// The vocal goes to private storage for a one-hour link AudioShake can read, then it's deleted.
+async function aiSync(vfile,vb,id){
+  let blob=vfile,ext=(vfile.name.split('.').pop()||'').toLowerCase();
+  if(!['mp3','wav','flac','aiff'].includes(ext)){blob=toWav(monoOf(vb),vb.sampleRate,16000);ext='wav';}
+  const path=`${user.id}/align/${id}-${Date.now()}.${ext}`;
+  const up=await sb.storage.from('takes').upload(path,blob,{contentType:ext==='mp3'?'audio/mpeg':'audio/'+ext});if(up.error)throw up.error;
+  try{
+    const su=await sb.storage.from('takes').createSignedUrl(path,3600);if(su.error)throw su.error;
+    const {id:task}=await ai('align_start',{url:su.data.signedUrl});
+    for(let i=0;i<80;i++){await pause(3000);const r=await ai('align_poll',{id:task});
+      if(r.status==='completed')return wordsFrom(r.data,vb.duration);if(r.status==='error')throw new Error(r.error);}
+    throw new Error('Alignment took too long');
+  }finally{sb.storage.from('takes').remove([path]);}
+}
+// Pulls word timings out of the alignment result, whatever its exact shape.
+function wordsFrom(data,dur){
+  const out=[];
+  const walk=o=>{if(Array.isArray(o)){o.forEach(walk);return;}if(!o||typeof o!=='object')return;
+    const tx=o.text??o.word??o.value,st=o.start??o.startTime??o.start_time??o.begin,en=o.end??o.endTime??o.end_time;
+    if(typeof tx==='string'&&typeof st==='number'&&typeof en==='number'&&tx.trim()&&!/\s/.test(tx.trim()))out.push({w:tx.trim(),s:st,e:en});
+    for(const k in o)if(o[k]&&typeof o[k]==='object')walk(o[k]);};
+  walk(data);out.sort((a,b)=>a.s-b.s);
+  if(out.length&&out[out.length-1].e>dur*5)out.forEach(x=>{x.s/=1000;x.e/=1000;});
+  return out.filter((x,i)=>!i||x.s!==out[i-1].s||x.w!==out[i-1].w);
+}
+// Matches the words AudioShake heard to the lyric words, then fills any gaps inside a line.
+const nw=w=>w.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]/g,'');
+const sameWord=(a,b)=>a===b||(a.length>=3&&b.length>=3&&(a.startsWith(b.slice(0,3))&&b.startsWith(a.slice(0,3))));
+function mapWords(lrc,heard){
+  if(!heard||heard.length<10)return null;
+  const lines=lrc.filter(l=>l.text&&!/^[♪♫\s]+$/.test(l.text)).map(l=>l.text.match(/\S+\s*/g)||[l.text]);
+  const A=[];lines.forEach((ws,li)=>ws.forEach((w,wi)=>A.push({li,wi,n:nw(w)})));
+  const B=heard.map(h=>nw(h.w)),n=A.length,m=B.length,W=m+1,sc=new Float32Array((n+1)*W),bt=new Uint8Array((n+1)*W);
+  for(let i=1;i<=n;i++){sc[i*W]=-i;bt[i*W]=1;}for(let j=1;j<=m;j++){sc[j]=-j;bt[j]=2;}
+  for(let i=1;i<=n;i++)for(let j=1;j<=m;j++){
+    const d=sc[(i-1)*W+j-1]+(sameWord(A[i-1].n,B[j-1])?2:-1),u=sc[(i-1)*W+j]-1,l=sc[i*W+j-1]-1;
+    if(d>=u&&d>=l){sc[i*W+j]=d;bt[i*W+j]=0;}else if(u>=l){sc[i*W+j]=u;bt[i*W+j]=1;}else{sc[i*W+j]=l;bt[i*W+j]=2;}}
+  const hit=new Array(n).fill(null);
+  for(let i=n,j=m;i>0&&j>0;){const b=bt[i*W+j];if(b===0){if(sameWord(A[i-1].n,B[j-1]))hit[i-1]=heard[j-1];i--;j--;}else if(b===1)i--;else j--;}
+  const wt=lines.map(()=>null);let k=0;
+  lines.forEach((ws,li)=>{
+    const h=ws.map((_,wi)=>hit[k+wi]);k+=ws.length;
+    if(h.filter(Boolean).length<Math.max(1,ws.length*.4))return;
+    const t=h.map(x=>x?[x.s,x.e]:null);
+    for(let i=0;i<t.length;i++){if(t[i])continue;let j=i;while(j<t.length&&!t[j])j++;
+      const a=i?t[i-1][1]:t[j][0]-.3*(j-i),b=j<t.length?t[j][0]:t[i-1][1]+.3*(j-i),step=(b-a)/(j-i);
+      for(let q=i;q<j;q++)t[q]=[a+step*(q-i),a+step*(q-i+1)];i=j;}
+    wt[li]=t.map(([a,b])=>[+a.toFixed(3),+b.toFixed(3)]);
+  });
+  return wt.some(Boolean)?wt:null;
+}
 let vocalTarget=null;
 function pickVocal(t){vocalTarget=t;const f=$('vocalFile');f.value='';f.click();}
 $('ownVocal').onclick=()=>pickVocal('pending');
@@ -1612,13 +1678,24 @@ async function addVocal(file,tgt){
   if(Math.abs(vb.duration-dur)>1.5){back();toast('That vocal is a different length from your track. Download both from the same song.');return;}
   const notes=await extractMelody(vb,tau);if(job!==ownJob)return;
   if(notes.length<20){back();toast('We couldn’t hear a lead vocal in that file. Pick the solo Lead Vocal download.');return;}
-  tick(0);tick(1,'active');
-  const al=alignToMelody(notes,pend?pendingOwn.found.lrc:tgt.lrc);
-  await pause(500);tick(1);tick(2,'active');await pause(450);tick(2);await pause(350);if(job!==ownJob)return;
-  if(pend){pendingOwn.vocal={file,vb,notes,al};ownFound();return;}
-  if(al!=null)tgt.autoOff=al;
+  const lrc=pend?pendingOwn.found.lrc:tgt.lrc,al=alignToMelody(notes,lrc);
+  let wt=null,verdict=null;
+  if(aiOn()){
+    // smart setup: Gemini listens to both files while AudioShake times every word
+    const items=['Learning the melody','Listening to your files','Syncing every word to the singer','Mic check'];
+    $('ownChecks').innerHTML=items.map(t=>`<li>${esc(t)}</li>`).join('');tick(0);tick(1,'active');tick(2,'active');
+    const backBuf=pend?pendingOwn.buf:(await tracksFor(tgt)).back,guess=pend?pendingOwn.found:tgt;
+    const jP=aiJudge(backBuf,vb,notes,guess).then(r=>{verdict=r;}).catch(e=>console.warn('judge',e)).finally(()=>tick(1));
+    const sP=aiSync(file,vb,pend?pendingOwn.id:tgt.id).then(h=>{wt=mapWords(lrc,h);}).catch(e=>console.warn('sync',e)).finally(()=>tick(2));
+    await Promise.all([jP,sP]);if(job!==ownJob)return;tick(3,'active');await pause(400);tick(3);await pause(300);
+  }else{
+    tick(0);tick(1,'active');await pause(500);tick(1);tick(2,'active');await pause(450);tick(2);await pause(350);if(job!==ownJob)return;
+  }
+  if(verdict&&verdict.problems&&verdict.problems.length)toast(verdict.problems[0]);
+  if(pend){pendingOwn.vocal={file,vb,notes,al,wt,ai:verdict};ownFound();return;}
+  if(al!=null)tgt.autoOff=al;tgt.wt=wt;
   tgt.notes=notes;setRange(tgt);buildOwnLines(tgt);
-  await saveOwnPatch(tgt.id,{vocal:file,notes,autoOff:tgt.autoOff,userOff:tgt.userOff});
+  await saveOwnPatch(tgt.id,{vocal:file,notes,autoOff:tgt.autoOff,userOff:0,wt,ai:verdict});
   const tr=await tracksFor(tgt);cache[tgt.id]=Promise.resolve({back:tr.back,guide:vb});
   closeOwn();openSheet(tgt);toast('In sync and ready to sing');
 }
