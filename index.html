@@ -234,6 +234,20 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
 .note{font-size:14px;line-height:1.45;color:var(--muted);background:var(--ink-2);border-radius:16px;padding:12px 14px;display:none}
 .note.on{display:block}
 
+/* Results: your Belter claps while the meter goes up like applause */
+.cheer{display:flex;align-items:flex-end;gap:16px;margin-top:6px}
+.cheer .av{width:88px;height:88px;box-shadow:0 0 0 3px var(--song),0 14px 24px -10px rgba(0,0,0,.6)}
+.cheer .av svg{width:80px;height:94px}
+.applause{display:flex;align-items:flex-end;gap:6px;height:64px;flex:none}
+.applause i{width:11px;height:100%;border-radius:6px 6px 3px 3px;transform-origin:bottom;transform:scaleY(var(--rest,.3))}
+.applause i:nth-child(1){background:var(--pink);--rest:.42}.applause i:nth-child(2){background:var(--mint);--rest:.66}
+.applause i:nth-child(3){background:var(--gold);--rest:.86}.applause i:nth-child(4){background:var(--violet);--rest:.58}
+.applause i:nth-child(5){background:var(--sky);--rest:.74}
+.applause.quiet i{--rest:.14}
+.applause.go i{animation:clapUp 1.7s cubic-bezier(.3,.7,.3,1) both}
+.applause.go i:nth-child(2){animation-delay:.06s}.applause.go i:nth-child(3){animation-delay:.12s}.applause.go i:nth-child(4){animation-delay:.04s}.applause.go i:nth-child(5){animation-delay:.1s}
+@keyframes clapUp{0%{transform:scaleY(.1)}14%{transform:scaleY(.95)}26%{transform:scaleY(.45)}40%{transform:scaleY(1)}52%{transform:scaleY(.55)}66%{transform:scaleY(.9)}100%{transform:scaleY(var(--rest))}}
+
 /* Profile */
 #mine{background:var(--violet);color:var(--ink);overflow-y:auto;gap:4px}
 .prof-top{display:flex;justify-content:space-between;align-items:center;font-size:15px;font-weight:700;margin-left:-8px}
@@ -294,6 +308,7 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
 
 @media (prefers-reduced-motion:reduce){
   #pick{transition:none}
+  .applause.go i{animation:none!important}
   .ln.cur.in,.mini-eq i,.checks li::before,#sing.live .lights i{animation:none!important}
   .sheet,.scrim{transition:none}
 }
@@ -383,6 +398,10 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
     <button class="icon" id="resBack" aria-label="Pick another song">&#8592;</button>
     <p class="res-song" id="resSong"></p>
   </header>
+  <div class="cheer" aria-hidden="true">
+    <span class="av"><svg class="belter" id="cheerMe" data-me="1" data-mic="none" data-clap="1" viewBox="0 -4 120 140"></svg></span>
+    <span class="applause" id="applause"><i></i><i></i><i></i><i></i><i></i></span>
+  </div>
   <h2 class="verdict" id="verdict"></h2>
   <p class="sub" id="sub"></p>
   <div class="player">
@@ -764,6 +783,7 @@ function buildBelter(svg){
     v:`<path d="M47 102 L60 118 L73 102 Z" fill="#fbf9ff" opacity=".92"/>`}[G.outfit]||'';
   const outfit=bust?'':`<path d="M14 140 C14 113 32 101 60 101 C88 101 106 113 106 140 Z" fill="${jk}"/>${detail}<rect x="52" y="90" width="16" height="15" rx="6" fill="${c}"/><rect x="52" y="90" width="16" height="15" rx="6" fill="#000" opacity=".16"/>`;
   const headset=G.mic==='headset'&&!bust?`<path d="M92 50 Q99 72 74 81" stroke="${INK}" stroke-width="2.6" fill="none" stroke-linecap="round"/><circle cx="72.5" cy="81.5" r="3.6" fill="${INK}"/>`:'';
+  const hands=svg.dataset.clap&&!bust?`<g class="hands"><ellipse class="hl" cx="40" cy="106" rx="9.5" ry="11" fill="${c}" stroke="${INK}" stroke-opacity=".18" stroke-width="1.2"/><ellipse class="hr" cx="80" cy="106" rx="9.5" ry="11" fill="${c}" stroke="${INK}" stroke-opacity=".18" stroke-width="1.2"/></g>`:'';
   const hand=bust||G.mic==='headset'||svg.dataset.mic==='none'?'':`<g class="mic"><rect x="-3.6" y="2" width="7.2" height="28" rx="3.6" fill="${INK}"/><rect x="-4.6" y="1" width="9.2" height="4" rx="2" fill="#6b6385"/><circle cx="0" cy="-6" r="8.5" fill="#cfc9dd"/><path d="M-8 -6 H8 M-6.5 -10.5 H6.5 M-6.5 -1.5 H6.5 M0 -14 V2 M-4.5 -13 V1 M4.5 -13 V1" stroke="${INK}" stroke-width=".7" opacity=".35"/><circle cx="-2.6" cy="-9" r="2.2" fill="#fff" opacity=".7"/><ellipse cx="1" cy="16" rx="7.5" ry="8.5" fill="${c}"/><ellipse cx="1" cy="16" rx="7.5" ry="8.5" fill="#000" opacity=".08"/></g>`;
   svg.innerHTML=`<defs><clipPath id="${id}h"><rect x="26" y="22" width="68" height="72" rx="30"/></clipPath><clipPath id="${id}m"><path class="mpath"/></clipPath></defs>
   ${outfit}
@@ -779,9 +799,9 @@ function buildBelter(svg){
    <path class="mouth" fill="${INK}"/>
    <g clip-path="url(#${id}m)"><ellipse class="tongue" cx="60" fill="#ff7a8f"/><rect class="teeth" fill="#fff" rx="1.2"/></g>
    ${hat}${headset}
-  </g>${hand}`;
+  </g>${hand}${hands}`;
   const q=k=>svg.querySelector(k);
-  const b={svg,bust,hair:[...svg.querySelectorAll('.hb')],brows:[...svg.querySelectorAll('.br')],eo:q('.eo'),ec:q('.ec'),mouth:q('.mouth'),mpath:q('.mpath'),tongue:q('.tongue'),teeth:q('.teeth'),head:q('.head'),mic:q('.mic'),seed:Math.random()*10,sm:0};
+  const b={svg,bust,hair:[...svg.querySelectorAll('.hb')],brows:[...svg.querySelectorAll('.br')],eo:q('.eo'),ec:q('.ec'),mouth:q('.mouth'),mpath:q('.mpath'),tongue:q('.tongue'),teeth:q('.teeth'),head:q('.head'),mic:q('.mic'),hl:q('.hl'),hr:q('.hr'),seed:Math.random()*10,sm:0};
   poseBelter(b,0,0,0);svg._b=b;return b;
 }
 function poseBelter(b,loud,lift,t){
@@ -1239,7 +1259,22 @@ function showResults(){
   setCoach(coachPref()&&!quiet,false);
   $('demoNote').classList.toggle('on',demo);
   setSaveState();
-  show('result');
+  show('result');cheer(!quiet);
+}
+// You did it: a couple of seconds of applause from your Belter, then a happy rest. Once, never looping.
+function cheer(on){
+  const a=$('applause'),b=$('cheerMe')._b;
+  a.classList.remove('go');a.classList.toggle('quiet',!on);void a.offsetWidth;if(on&&!reduceMotion)a.classList.add('go');
+  if(!b)return;
+  const place=(gap,y)=>{if(!b.hl)return;b.hl.setAttribute('cx',(60-gap).toFixed(1));b.hr.setAttribute('cx',(60+gap).toFixed(1));b.hl.setAttribute('cy',y.toFixed(1));b.hr.setAttribute('cy',y.toFixed(1));};
+  const t0=performance.now(),dur=on&&!reduceMotion?1800:0;
+  const step=now=>{
+    if(!$('result').classList.contains('on'))return;
+    const e=now-t0;
+    if(e<dur){const p=Math.abs(Math.sin(e/1000*Math.PI*4.4));place(8.5+p*16,103-p*3);poseBelter(b,.75,.6,now);requestAnimationFrame(step);}
+    else{place(on?22:24,110);poseBelter(b,on?.22:0,on?.3:0,now);if(e<dur+900)requestAnimationFrame(step);}
+  };
+  requestAnimationFrame(step);
 }
 function setCoach(open,remember){
   $('coach').hidden=!open;$('coachBtn').setAttribute('aria-expanded',open);
