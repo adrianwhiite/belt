@@ -1108,14 +1108,15 @@ function drawLane(song,t,lvl){
     if(n.syl&&x1-x0>4){g.fillStyle=active?INK:'rgba(29,22,49,.55)';g.font=F(active?800:600,10.5);g.textBaseline='top';g.fillText(n.syl,x0+1,y+bh+4);}
   }
   // your voice, crisp
-  g.strokeStyle=INK;g.lineWidth=1.8;g.lineCap='round';g.lineJoin='round';g.beginPath();
-  let pen=false,prev=null;
+  g.strokeStyle=INK;g.lineWidth=2;g.lineCap='round';g.lineJoin='round';g.beginPath();
+  let seg=[];const flush=()=>{if(seg.length>1){g.moveTo(seg[0][0],seg[0][1]);for(let i=1;i<seg.length-1;i++){const mx=(seg[i][0]+seg[i+1][0])/2,my=(seg[i][1]+seg[i+1][1])/2;g.quadraticCurveTo(seg[i][0],seg[i][1],mx,my);}const e=seg[seg.length-1];g.lineTo(e[0],e[1]);}seg=[];};
+  let prev=null;
   for(const p of run.trail){
-    if(p.m==null||(prev&&(p.t-prev.t>.12||Math.abs(p.m-prev.m)>3))){pen=false;}
+    if(p.m==null||(prev&&(p.t-prev.t>.12||Math.abs(p.m-prev.m)>3)))flush();
     if(p.m==null){prev=null;continue;}
-    const x=X(p.t),y=Y(Math.max(lo,Math.min(hi,p.m)));if(!pen){g.moveTo(x,y);pen=true;}else g.lineTo(x,y);prev=p;
+    seg.push([X(p.t),Y(Math.max(lo,Math.min(hi,p.m)))]);prev=p;
   }
-  g.stroke();g.restore();
+  flush();g.stroke();g.restore();
   // now line with a small cap
   g.fillStyle='rgba(29,22,49,.7)';g.fillRect(nowX-.5,padT-6,1,h-padT-padB+12);
   g.beginPath();g.moveTo(nowX-4,padT-8);g.lineTo(nowX+4,padT-8);g.lineTo(nowX,padT-3);g.fill();
@@ -1175,6 +1176,8 @@ function loop(){
     pm=cur.midi+Math.sin(t*6.5)*.3+(Math.sin(t*.9+1)>.93?1.5:0);lvl=.05;
   }
   run.lvl=lvl;
+  // only listen around the words: intros, solos and the song leaking from a speaker don't count
+  {const L=song.lines[run.idx],N=song.lines[run.idx+1];const near=L&&t>=L.start-1&&t<=L.end+1||N&&t>=N.start-1;if(!near){pm=null;lvl=0;}}
   if(pm!=null){
     run.sm=run.sm==null||Math.abs(pm-run.sm)>1.5?pm:run.sm+(pm-run.sm)*.5;
     let mm=run.sm,ok=null;
@@ -1189,12 +1192,16 @@ function loop(){
       }
       const d=fold(raw-run.key);mm=cur.midi+d;ok=Math.abs(d)<=.9;
       const st=run.ns.get(cur)||{v:0,h:0};st.v++;if(ok)st.h++;run.ns.set(cur,st);
+      run.sung.push(run.sm-12*Math.round((run.key||0)/12)); // real singing on a note: this is what the range comes from
+      if(run.sung.length%30===0&&run.sung.length>=90){const q=run.sung.slice(-400).sort((a,b)=>a-b),md=q[q.length>>1];run.range=RANGES.find(r=>md<r[0])[1]+' range';}
     }
     else{const ref=run.lastM??(song.minM+song.maxM)/2;while(mm-ref>6)mm-=12;while(ref-mm>6)mm+=12;}
-    run.trail.push({t,m:mm,ok});run.lastM=mm;
-    run.sung.push(run.sm-12*Math.round((run.key||0)/12));
-    if(run.sung.length%30===0&&run.sung.length>=60){const q=run.sung.slice(-400).sort((a,b)=>a-b),md=q[q.length>>1];run.range=RANGES.find(r=>md<r[0])[1]+' range';}
-  }else{run.sm=null;run.trail.push({t,m:null,ok:null});}
+    // what you see is calmer than what's scored: vibrato is averaged out, and a voice that's close to the note sits near it
+    const now=performance.now(),dt=Math.min(.1,(now-(run.dispT||now))/1000);run.dispT=now;
+    if(run.disp==null||Math.abs(mm-run.disp)>2.5)run.disp=mm;else run.disp+=(mm-run.disp)*(1-Math.exp(-dt/.13));
+    let shown=run.disp;if(cur&&Math.abs(shown-cur.midi)<1)shown=cur.midi+(shown-cur.midi)*.55;
+    run.trail.push({t,m:shown,ok});run.lastM=shown;
+  }else{run.sm=null;run.disp=null;run.trail.push({t,m:null,ok:null});}
   while(run.trail.length&&run.trail[0].t<t-1.5)run.trail.shift();
   // grade each note as it ends
   while(run.ni<song.notes.length&&t>=song.notes[run.ni].t+song.notes[run.ni].d){
@@ -1353,7 +1360,7 @@ function impulse(){
   return b;
 }
 function setPlayIcon(on){$('playIcon').innerHTML=on?'<path d="M7 5h4v14H7zM13 5h4v14h-4z"/>':'<path d="M8 5v14l11-7z"/>';$('play').setAttribute('aria-label',on?'Pause':'Play your performance');}
-function balGains(){const v=+$('bal').value/100;return {music:.25+1.05*(1-v),voice:.35+1.8*v};}
+function balGains(){const v=+$('bal').value/100,a=v*Math.PI/2;return {music:Math.max(.035,1.15*Math.cos(a)),voice:Math.max(.05,2*Math.sin(a))};}
 function stopMix(){
   if(!mix)return;
   try{mix.b.stop();mix.v.stop();}catch(e){}
