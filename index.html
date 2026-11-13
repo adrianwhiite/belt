@@ -139,6 +139,18 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
 .fx{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:var(--ink-2);border-radius:99px;padding:4px}
 .fx button{min-height:44px;border-radius:99px;font-size:15px;font-weight:700;color:var(--muted)}
 .fx button[aria-pressed=true]{background:var(--song);color:var(--ink)}
+.coach-btn{align-self:flex-start;font-size:17px;font-weight:700;color:var(--paper);padding:12px 18px;border-radius:99px;box-shadow:inset 0 0 0 2px rgba(251,249,255,.28)}
+.coach-btn[aria-expanded=true]{display:none}
+.coach{display:flex;flex-direction:column;gap:16px}
+.coach[hidden]{display:none}
+.coach-hide{align-self:center}
+.cards{display:grid;gap:10px}
+.card{position:relative;border-radius:22px;padding:16px 16px 14px 18px;background:var(--ink-2);display:grid;gap:6px}
+.card:nth-child(1){transform:rotate(-.8deg)}.card:nth-child(2){transform:rotate(.6deg)}.card:nth-child(3){transform:rotate(-.4deg)}
+.card-tag{justify-self:start;font-size:13px;font-weight:800;padding:4px 10px;border-radius:99px;color:var(--ink);background:var(--c)}
+.card-line{font-size:21px;font-weight:800;letter-spacing:-.02em;line-height:1.15;text-wrap:balance}
+.card-sub{font-size:15px;color:var(--muted);line-height:1.35}
+.card-hear{justify-self:start;font-size:15px;font-weight:700;color:var(--c);padding:6px 0 0}
 .actions{display:grid;gap:10px;margin-top:4px}
 .mine-btn{font-size:15px;font-weight:700;padding:8px 14px;border-radius:99px;background:rgba(29,22,49,.1)}
 .text-btn{font-size:15px;font-weight:600;color:var(--muted);padding:8px}
@@ -251,12 +263,7 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
     <p class="res-song" id="resSong"></p>
   </header>
   <h2 class="verdict" id="verdict"></h2>
-  <div class="score"><b id="score">0</b><span>% on pitch</span></div>
   <p class="sub" id="sub"></p>
-  <div class="graph">
-    <canvas id="graph" aria-label="Your pitch compared with the melody"></canvas>
-    <div class="legend"><span><i class="k1"></i>Melody</span><span><i class="k2"></i>On pitch</span><span><i class="k3"></i>Off pitch</span></div>
-  </div>
   <div class="player">
     <button class="play" id="play" aria-label="Play your performance"><svg viewBox="0 0 24 24" id="playIcon"><path d="M8 5v14l11-7z"/></svg></button>
     <div class="bal">
@@ -269,6 +276,16 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
     <button data-fx="natural" aria-pressed="false">Natural</button>
     <button data-fx="studio" aria-pressed="true">Studio</button>
     <button data-fx="hall" aria-pressed="false">Concert hall</button>
+  </div>
+  <button class="coach-btn" id="coachBtn" aria-expanded="false">How did I do?</button>
+  <div class="coach" id="coach" hidden>
+    <div class="score"><b id="score">0</b><span>% on pitch</span></div>
+    <div class="cards" id="cards"></div>
+    <div class="graph">
+      <canvas id="graph" aria-label="Your pitch compared with the melody"></canvas>
+      <div class="legend"><span><i class="k1"></i>Melody</span><span><i class="k2"></i>On pitch</span><span><i class="k3"></i>Off pitch</span></div>
+    </div>
+    <button class="text-btn coach-hide" id="coachHide">Keep it just for fun next time</button>
   </div>
   <p class="note" id="demoNote">Preview mode: this page can't use the mic here, so you're hearing a simulated singer. Open the hosted version of the prototype to record your own voice.</p>
   <div class="actions">
@@ -495,7 +512,10 @@ function scoreIt(song,frames){
   let key=0,best=hitsAt(0);
   for(let k=-6;k<6;k++){if(!k)continue;const h=hitsAt(k);if(h>best*1.15+2){best=h;key=k;}}
   const pts=vs.map(v=>{const d=fold(v.diff-key);return {t:v.t,m:v.n.midi+d,ok:Math.abs(d)<=.9};});
-  return {acc:vs.length?best/vs.length:0,cover:inNote?vs.length/inNote:0,pts,key};
+  const per=new Map();
+  for(const f of frames){const n=song.notes.find(n=>f.t>=n.t+.06&&f.t<n.t+n.d);if(!n)continue;const o=per.get(n)||{n,frames:0,voiced:0,hits:0,dsum:0,ds:[]};o.frames++;per.set(n,o);}
+  for(const v of vs){const o=per.get(v.n),d=fold(v.diff-key);o.voiced++;o.dsum+=d;o.ds.push(d);if(Math.abs(d)<=.9)o.hits++;}
+  return {acc:vs.length?best/vs.length:0,cover:inNote?vs.length/inNote:0,pts,key,per:[...per.values()]};
 }
 function fakeVoice(song,sr){
   const len=Math.ceil(song.dur*sr),v=new Float32Array(len);let ph=0;
@@ -766,20 +786,69 @@ function verdictFor(sc){
   const k=sc.key?` Scored in your own key, ${Math.abs(sc.key)} ${Math.abs(sc.key)===1?'step':'steps'} ${sc.key>0?'above':'below'} the original.`:'';
   return [v,`You sang through ${Math.round(sc.cover*100)}% of the song.${k}`];
 }
+const FUN=['That was a whole moment','Encore!','Main character energy','That one goes on the fridge','The crowd goes wild','Somebody call the label','Pure, unfiltered you'];
+const coachPref=()=>{try{return localStorage.getItem('belt.coach')==='on';}catch(e){return false;}};
+const setCoachPref=v=>{try{localStorage.setItem('belt.coach',v?'on':'off');}catch(e){}};
 function showResults(){
   const {song,sc}=last;
   $('resSong').textContent=song.title;
-  const [v,sub]=verdictFor(sc);
-  $('verdict').textContent=v;$('sub').textContent=sub;
+  const quiet=sc.cover<.15;
+  $('verdict').textContent=quiet?'We couldn\u2019t hear you':FUN[Math.floor(Math.random()*FUN.length)];
+  $('sub').textContent=quiet?'Check that the mic is allowed, then sing out a little louder.':'Hit play to hear yourself, then pick a sound.';
+  setCoach(coachPref()&&!quiet,false);
   $('demoNote').classList.toggle('on',demo);
   setSaveState();
   show('result');
-  const target=Math.round(sc.acc*100),el=$('score'),t0=performance.now();
+}
+function setCoach(open,remember){
+  $('coach').hidden=!open;$('coachBtn').setAttribute('aria-expanded',open);
+  if(remember!==false)setCoachPref(open);
+  if(!open)return;
+  const sc=last.sc,target=Math.round(sc.acc*100),el=$('score'),t0=performance.now();
   const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
   const tick=now=>{const k=reduce?1:Math.min(1,(now-t0)/700);el.textContent=Math.round(target*(1-Math.pow(1-k,3)));if(k<1)requestAnimationFrame(tick);};
   requestAnimationFrame(tick);
-  drawGraph(null);
+  renderCards();drawGraph(null);
 }
+$('coachBtn').onclick=()=>{setCoach(true);$('coach').scrollIntoView({behavior:'smooth',block:'start'});};
+$('coachHide').onclick=()=>{setCoach(false);toast('Got it. Just for fun from now on.');};
+
+/* Notes from the booth: one thing you did well, one thing to try, one fun fact. Each can replay its moment. */
+const NAMES=['C','C\u266f','D','E\u266d','E','F','F\u266f','G','A\u266d','A','B\u266d','B'];
+const noteName=m=>NAMES[((Math.round(m)%12)+12)%12]+(Math.floor(Math.round(m)/12)-1);
+function boothNotes(song,sc){
+  const per=sc.per.filter(o=>o.frames>=3),key=sc.key||0;
+  const lineOf=n=>song.lines.find(L=>n.t>=L.start-.01&&n.t<L.end+.01)||song.lines[0];
+  const lines=song.lines.map(L=>{const ps=per.filter(o=>lineOf(o.n)===L);const fr=ps.reduce((a,o)=>a+o.frames,0),vo=ps.reduce((a,o)=>a+o.voiced,0),hi=ps.reduce((a,o)=>a+o.hits,0),ds=ps.reduce((a,o)=>a+o.dsum,0);return {L,fr,vo,hi,hit:vo?hi/vo:0,cov:fr?vo/fr:0,bias:vo?ds/vo:0};}).filter(x=>x.fr>=6);
+  const quote=L=>'\u201c'+L.text.trim().replace(/[,.!]+$/,'')+'\u201d';
+  const mom=L=>({t0:L.start,t1:L.end});
+  const out=[];
+  // what you did well
+  const longs=per.filter(o=>o.n.d>=.75&&o.voiced>=6).sort((a,b)=>b.hits/b.voiced-a.hits/a.voiced);
+  const bestLine=[...lines].filter(x=>x.cov>.5).sort((a,b)=>b.hit-a.hit)[0];
+  if(longs.length&&longs[0].hits/longs[0].voiced>=.8){const o=longs[0];out.push({tag:'Your best bit',c:'#3ddc97',line:'You held that long note like a pro',sub:`${quote(lineOf(o.n))}, ${o.n.d.toFixed(1)} seconds, right on pitch.`,m:{t0:o.n.t-1,t1:o.n.t+o.n.d}});}
+  else if(bestLine&&bestLine.hit>=.6)out.push({tag:'Your best bit',c:'#3ddc97',line:`You owned ${quote(bestLine.L)}`,sub:'That line was spot on. Sing the rest like that.',m:mom(bestLine.L)});
+  else if(sc.cover>=.8)out.push({tag:'Your best bit',c:'#3ddc97',line:'You never stopped singing',sub:'Commitment is half of karaoke. You had it.',m:null});
+  else out.push({tag:'Your best bit',c:'#3ddc97',line:'You showed up and sang',sub:'That\u2019s the hardest part done.',m:null});
+  // one thing to try
+  const quietLine=[...lines].sort((a,b)=>a.cov-b.cov)[0];
+  const worst=[...lines].filter(x=>x.vo>=6).sort((a,b)=>a.hit-b.hit)[0];
+  if(quietLine&&quietLine.cov<.45)out.push({tag:'Try next',c:'#ffb020',line:`Big breath before ${quote(quietLine.L)}`,sub:'You went quiet there. Sing it out, even if you\u2019re unsure of it.',m:mom(quietLine.L)});
+  else if(worst&&worst.hit<.75){const dir=worst.bias<-.25?'Aim a touch higher':worst.bias>.25?'Relax down a touch':'Listen for the guide';const why=worst.bias<-.25?'You slid a little flat on this line.':worst.bias>.25?'You pushed a little sharp on this line.':'The tune wandered a bit here.';out.push({tag:'Try next',c:'#ffb020',line:`${dir} on ${quote(worst.L)}`,sub:why,m:mom(worst.L)});}
+  else out.push({tag:'Try next',c:'#ffb020',line:'Turn off the guide melody',sub:'You\u2019ve got this one. See if you can do it on your own.',m:null});
+  // fun fact
+  const sung=sc.pts.filter(p=>p.ok).map(p=>p.m+key);
+  const held=per.filter(o=>o.hits>=4).sort((a,b)=>b.n.d-a.n.d)[0];
+  if(key)out.push({tag:'Fun fact',c:'#9b8aff',line:`You sang it ${Math.abs(key)} ${Math.abs(key)===1?'step':'steps'} ${key>0?'higher':'lower'} than the original`,sub:'Your key, your rules. We scored you in it.',m:null});
+  else if(sung.length>8){const hi=Math.max(...sung),lo=Math.min(...sung);out.push({tag:'Fun fact',c:'#9b8aff',line:`Your highest note: ${noteName(hi)}`,sub:`You covered ${Math.round(hi-lo)+1} notes, from ${noteName(lo)} up to ${noteName(hi)}.`,m:null});}
+  else if(held)out.push({tag:'Fun fact',c:'#9b8aff',line:`Longest note you held: ${held.n.d.toFixed(1)} seconds`,sub:'Lungs of steel.',m:{t0:held.n.t-1,t1:held.n.t+held.n.d}});
+  return out;
+}
+function renderCards(){
+  const notes=boothNotes(last.song,last.sc);last.booth=notes;
+  $('cards').innerHTML=notes.map((n,i)=>`<div class="card" style="--c:${n.c}"><span class="card-tag">${esc(n.tag)}</span><p class="card-line">${esc(n.line)}</p><p class="card-sub">${esc(n.sub)}</p>${n.m?`<button class="card-hear" data-i="${i}">Hear it</button>`:''}</div>`).join('');
+}
+$('cards').onclick=e=>{const b=e.target.closest('.card-hear');if(!b)return;const m=last.booth[+b.dataset.i].m;playMix(Math.max(0,m.t0-.4),m.t1+.6);};
 function drawGraph(playT){
   const {song,sc}=last,cv=$('graph'),dpr=window.devicePixelRatio||1;
   const w=cv.clientWidth,h=cv.clientHeight;cv.width=w*dpr;cv.height=h*dpr;
@@ -803,7 +872,7 @@ function balGains(){const v=+$('bal').value/100;return {music:.25+1.05*(1-v),voi
 function stopMix(){
   if(!mix)return;
   try{mix.b.stop();mix.v.stop();}catch(e){}
-  mix=null;setPlayIcon(false);if(last)drawGraph(null);
+  mix=null;setPlayIcon(false);if(last&&!$('coach').hidden)drawGraph(null);
 }
 // One-tap voice sounds. Each preset sets filter gains and effect sends on one shared chain,
 // so switching while it plays is instant.
@@ -820,7 +889,7 @@ function applyFx(m,instant){
   set(m.comp.threshold,f.thr);set(m.comp.ratio,f.thr?4:1);
   set(m.sShort.gain,f.short);set(m.sLong.gain,f.long);set(m.sEcho.gain,f.echo);
 }
-function playMix(){
+function playMix(from,until){
   ensureCtx();stopMix();
   const {song,voice}=last;
   if(!IR)IR={short:impulseLen(1.2,3),long:impulseLen(3.2,2.2)};
@@ -839,11 +908,11 @@ function playMix(){
   gv.connect(sShort);sShort.connect(rvS);rvS.connect(ctx.destination);
   gv.connect(sLong);sLong.connect(rvL);rvL.connect(ctx.destination);
   gv.connect(sEcho);sEcho.connect(dl);dl.connect(fb);fb.connect(dl);dl.connect(ctx.destination);
-  const off=Math.max(0,song.notes[0].t-song.spb*1.5),at=ctx.currentTime+.08;
+  const off=from!=null?from:Math.max(0,song.notes[0].t-song.spb*1.5),at=ctx.currentTime+.08,end=until!=null?until:song.lastEnd+.8;
   b.start(at,off);v.start(at,off);
   mix={b,v,gb,gv,at,off,song,hp,low,pres,air,comp,sShort,sLong,sEcho};applyFx(mix,true);setPlayIcon(true);
   b.onended=()=>{if(mix&&mix.b===b)stopMix();};
-  const tick=()=>{if(!mix||mix.b!==b)return;const t=ctx.currentTime-(ctx.outputLatency||0)-at+off;drawGraph(t);if(t>song.lastEnd+.8){stopMix();return;}requestAnimationFrame(tick);};
+  const tick=()=>{if(!mix||mix.b!==b)return;const t=ctx.currentTime-(ctx.outputLatency||0)-at+off;if(!$('coach').hidden)drawGraph(t);if(t>end){stopMix();return;}requestAnimationFrame(tick);};
   requestAnimationFrame(tick);
 }
 document.querySelectorAll('.fx button').forEach(bt=>bt.onclick=()=>{
@@ -854,7 +923,7 @@ $('play').onclick=()=>mix?stopMix():playMix();
 $('bal').oninput=()=>{if(!mix)return;const {music,voice}=balGains();mix.gb.gain.setTargetAtTime(music,ctx.currentTime,.05);mix.gv.gain.setTargetAtTime(voice,ctx.currentTime,.05);};
 $('again').onclick=async()=>{stopMix();ensureCtx();current=last.song;tracks=await cache[current.id];startSong();};
 $('another').onclick=$('resBack').onclick=()=>{stopMix();show('pick');};
-window.addEventListener('resize',()=>{if(last&&$('result').classList.contains('on'))drawGraph(null);});
+window.addEventListener('resize',()=>{if(last&&$('result').classList.contains('on')&&!$('coach').hidden)drawGraph(null);});
 
 /* ---------- Accounts (Supabase + Google). Singing never needs an account; Save does. ---------- */
 const SB_URL='https://wksewqwujfrqmqliltbn.supabase.co',SB_KEY='sb_publishable_-hWzU5dnarN0XczEFFpmOQ_NnHLooy5';
