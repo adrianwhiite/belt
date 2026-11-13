@@ -131,10 +131,18 @@ async function askGemini(key: string, payload: unknown) {
 /* ---------- Replicate: Demucs separation, a few cents per song ---------- */
 const RP = "https://api.replicate.com/v1";
 const rpToken = () => env("REPLICATE_API_TOKEN").trim().replace(/^["']|["']$/g, "").replace(/^Bearer\s+/i, "");
+// Logs only the shape of the token (never the token): helps spot a wrong or stale value.
+let shapeLogged = false;
+const logTokenShape = () => {
+  if (shapeLogged) return; shapeLogged = true;
+  const raw = Deno.env.get("REPLICATE_API_TOKEN") || "", t = raw ? rpToken() : "";
+  console.log(`replicate token shape: starts "${t.slice(0, 3)}", ${t.length} chars, ends "${t.slice(-4)}", raw had spaces/quotes: ${raw !== t}`);
+};
 const rpHeaders = () => ({ Authorization: `Bearer ${rpToken()}`, "Content-Type": "application/json" });
 const versions: Record<string, string> = {};
 
 async function rp(path: string, init?: RequestInit) {
+  logTokenShape();
   const r = await fetch(RP + path, { ...init, headers: rpHeaders() });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(`Replicate ${r.status} on ${path.split("?")[0]}: ${j?.detail || j?.title || "no details"}`);
