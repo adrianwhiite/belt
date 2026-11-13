@@ -664,7 +664,7 @@ async function renderTracks(song){
 }
 
 /* ---------- Pitch analysis (YIN on a 4x-downsampled signal) ---------- */
-function detectPitch(buf,sr,hop,gateFrac){
+function detectPitch(buf,sr,hop,gateFrac,thr){
   const ds=4,dsr=sr/ds,n=Math.floor(buf.length/ds),x=new Float32Array(n);
   for(let i=0;i<n;i++){let s=0;for(let j=0;j<ds;j++)s+=buf[i*ds+j];x[i]=s/ds;}
   const W=512,H=hop||256,tmin=Math.floor(dsr/1000),tmax=Math.floor(dsr/75),d=new Float32Array(tmax+2);
@@ -676,7 +676,7 @@ function detectPitch(buf,sr,hop,gateFrac){
     if(rms[fi]<gate){frames.push({t,m:null});return;}
     let run=0,tau=-1;d[0]=1;
     for(let T=1;T<=tmax;T++){let sum=0;for(let i=0;i<W;i++){const df=x[s+i]-x[s+i+T];sum+=df*df;}run+=sum;d[T]=run?sum*T/run:1;}
-    for(let T=tmin;T<=tmax;T++){if(d[T]<.15){while(T+1<=tmax&&d[T+1]<d[T])T++;tau=T;break;}}
+    for(let T=tmin;T<=tmax;T++){if(d[T]<(thr||.15)){while(T+1<=tmax&&d[T+1]<d[T])T++;tau=T;break;}}
     if(tau<0){frames.push({t,m:null});return;}
     let bt=tau;if(tau>1&&tau<tmax){const a=d[tau-1],b=d[tau],c=d[tau+1],den=a+c-2*b;if(den)bt=tau+(a-c)/(2*den);}
     frames.push({t,m:69+12*Math.log2(dsr/bt/440)});
@@ -1014,6 +1014,11 @@ async function openSheet(song){
   const st=$('start');st.disabled=true;st.textContent=own?'Loading your song':'Tuning up';
   try{tracks=await tracksFor(song);}
   catch(e){delete cache[song.id];if(current===song)st.textContent='Couldn’t open this song';return;}
+  if(own&&mel&&tracks.guide&&song.mv<MELODY_V){ // songs set up before the melody reader improved: re-read from the saved vocal
+    st.textContent='Reading the melody again';
+    const notes=await extractMelody(tracks.guide,song.an.tau);
+    if(notes.length>=20){song.notes=notes;song.mv=MELODY_V;setRange(song);buildOwnLines(song);saveOwnPatch(song.id,{notes,mv:MELODY_V});}
+  }
   if(current===song){st.disabled=false;st.textContent=own&&!mel?'Add the vocal track':'Take the stage';}
 }
 function closeSheet(){$('sheet').classList.remove('on');if(!document.querySelector('.sheet.on'))$('scrim').classList.remove('on');}
@@ -1735,7 +1740,7 @@ function buildOwnLines(song){
   if(song.wt)lines.forEach((L,k)=>{const w=song.wt[k];if(!w||w.length!==L.syl.length)return;
     L.syl.forEach((x,j)=>{x.start=w[j][0];x.end=Math.max(w[j][0]+.08,w[j][1]);});L.start=L.syl[0].start;L.end=L.syl[L.syl.length-1].end;L.ai=true;});
   if(song.notes&&song.notes.length){trackDrift(lines,song.notes);fitWordsToNotes(lines,song.notes);}
-  song.lines=lines;if(song.notes&&song.notes.length)labelNotes(song);song.lead=song.firstT=lines.length?lines[0].start:0;
+  song.lines=lines;if(song.notes&&song.notes.length){startNotesAtWords(song);labelNotes(song);}song.lead=song.firstT=lines.length?lines[0].start:0;
   song.lastEnd=lines.length?lines[lines.length-1].end:song.len;
 }
 // Lyric files are timed to the original record; a re-recording drifts. Follow the drift line by line,
@@ -1776,23 +1781,54 @@ function setRange(s){
 }
 // Melody from the solo lead vocal: pitch track, then cut into notes snapped to the song's tuning.
 function monoOf(buf){const n=buf.length,c=buf.numberOfChannels,x=new Float32Array(n);for(let k=0;k<c;k++){const d=buf.getChannelData(k);for(let i=0;i<n;i++)x[i]+=d[i]/c;}return x;}
+// Melody from the separated lead vocal, made for real singing: a held note stays one bar through vibrato,
+// slides and tiny dropouts, and only changes when the voice settles on a new note for a moment.
+const MELODY_V=2;
 async function extractMelody(buf,tau){
   await yieldUI();await yieldUI();
-  const fr=detectPitch(monoOf(buf),buf.sampleRate,256,.03),m=fr.map(f=>f.m);
-  const sm=m.map((v,i)=>{if(v==null)return null;const w=[];for(let j=i-2;j<=i+2;j++)if(m[j]!=null)w.push(m[j]);w.sort((a,b)=>a-b);return w[w.length>>1];});
-  const hop=fr.length>1?fr[1].t-fr[0].t:.023,raw=[];let cur=null;
-  const close=()=>{if(cur&&cur.lastT-cur.t0+hop>=.09){const q=cur.ms.slice().sort((a,b)=>a-b);raw.push({t:cur.t0,d:cur.lastT-cur.t0+hop,mr:q[q.length>>1]});}cur=null;};
-  fr.forEach((f,i)=>{const v=sm[i];
-    if(v==null){if(cur&&f.t-cur.lastT>.07)close();return;}
-    if(cur){const tail=cur.ms.slice(-6),ref=tail.reduce((a,b)=>a+b,0)/tail.length;if(Math.abs(v-ref)<=.7&&f.t-cur.lastT<=.08){cur.ms.push(v);cur.lastT=f.t;return;}close();}
-    cur={t0:f.t,lastT:f.t,ms:[v]};});
-  close();
-  for(const n of raw)n.midi=Math.round(n.mr-tau)+tau;
-  for(let i=1;i<raw.length-1;i++){const a=raw[i-1],n=raw[i],b=raw[i+1];if(n.d>=.2)continue;
-    for(const o of [-12,12])if(Math.abs(n.midi+o-a.midi)<2.5&&Math.abs(n.midi+o-b.midi)<2.5){n.midi+=o;break;}}
+  const fr=detectPitch(monoOf(buf),buf.sampleRate,256,.025,.25),n=fr.length,hop=n>1?fr[1].t-fr[0].t:.023;
+  let m=fr.map(f=>f.m);
+  // octave slips: a frame an octave away from the voice around it is the same note
+  for(let i=0;i<n;i++){if(m[i]==null)continue;const w=[];for(let j=Math.max(0,i-12);j<=Math.min(n-1,i+12);j++)if(m[j]!=null)w.push(m[j]);
+    w.sort((a,b)=>a-b);const md=w[w.length>>1];if(Math.abs(m[i]-12-md)<2)m[i]-=12;else if(Math.abs(m[i]+12-md)<2)m[i]+=12;}
+  // bridge short dropouts inside a held note
+  for(let i=0;i<n;i++){if(m[i]!=null)continue;let j=i;while(j<n&&m[j]==null)j++;
+    if(i>0&&j<n&&(j-i)*hop<=.14&&Math.abs(m[i-1]-m[j])<1.2)for(let k=i;k<j;k++)m[k]=m[i-1]+(m[j]-m[i-1])*(k-i+1)/(j-i+1);i=j;}
+  // smooth: median of 7
+  const sm=m.map((v,i)=>{if(v==null)return null;const w=[];for(let j=i-3;j<=i+3;j++)if(m[j]!=null)w.push(m[j]);w.sort((a,b)=>a-b);return w[w.length>>1];});
+  // hold a note until the voice settles on another one for ~90 ms (vibrato and slides don't count)
+  const lab=new Array(n).fill(null),SETTLE=Math.max(3,Math.round(.09/hop));let cur=null,cand=null,cs=0,cc=0;
+  for(let i=0;i<n;i++){
+    const v=sm[i];if(v==null){cur=null;cand=null;cc=0;continue;}
+    const q=v-tau,r=Math.round(q);
+    if(cur==null){cur=r;lab[i]=cur;continue;}
+    if(Math.abs(q-cur)<=.7){cand=null;cc=0;lab[i]=cur;continue;}
+    if(cand===r)cc++;else{cand=r;cs=i;cc=1;}
+    if(cc>=SETTLE){cur=cand;for(let k=cs;k<=i;k++)lab[k]=cur;cand=null;cc=0;}else lab[i]=cur;
+  }
+  // runs of the same note become bars; join the same note across a short gap
   const out=[];
-  for(const n of raw){const q=out[out.length-1];if(q&&Math.abs(q.midi-n.midi)<.01&&n.t-(q.t+q.d)<.07)q.d=+(n.t+n.d-q.t).toFixed(3);else out.push({t:+n.t.toFixed(3),d:+n.d.toFixed(3),midi:n.midi});}
-  return out;
+  for(let i=0;i<n;i++){if(lab[i]==null)continue;let j=i;while(j+1<n&&lab[j+1]===lab[i])j++;
+    const t=fr[i].t,d=fr[j].t-t+hop,mi=lab[i]+tau,p=out[out.length-1];
+    if(p&&Math.abs(p.midi-mi)<.01&&t-(p.t+p.d)<.16)p.d=t+d-p.t;else out.push({t,d,midi:mi});i=j;}
+  // drop crumbs: very short bars join a touching neighbour or go
+  const res=[];
+  for(const x of out){if(x.d>=.12){res.push(x);continue;}const p=res[res.length-1];if(p&&x.t-(p.t+p.d)<.05)p.d=x.t+x.d-p.t;}
+  // a short slide into a note belongs to that note: the bar starts where the slide starts
+  for(let i=res.length-2;i>=0;i--){const a=res[i],b=res[i+1];
+    if(a.d<.22&&b.d>a.d*1.5&&b.t-(a.t+a.d)<.05&&Math.abs(b.midi-a.midi)<=2.5){b.d+=b.t-a.t;b.t=a.t;res.splice(i,1);}}
+  return res.map(x=>({t:+x.t.toFixed(3),d:+x.d.toFixed(3),midi:x.midi}));
+}
+// Bars start where the word starts: singers slide into notes, so the steady part comes a beat late.
+function startNotesAtWords(song){
+  const ns=song.notes;if(!ns.length)return;let k=0;
+  for(const L of song.lines)for(const x of L.syl){
+    while(k<ns.length&&ns[k].t<x.start-.03)k++;const n=ns[k];if(!n)return;
+    const lead=n.t-x.start;if(!(lead>.03&&lead<.45&&n.t<x.end))continue;
+    const p=k?ns[k-1]:null;
+    if(p&&p.t+p.d>x.start){if(p.t<x.start-.15)p.d=x.start-p.t;else continue;} // the note before rings on: trim it
+    n.d+=lead;n.t=x.start;
+  }
 }
 // Lines up the lyric times with where phrases actually start in the vocal.
 function alignToMelody(notes,lrc){
@@ -1806,7 +1842,7 @@ function alignToMelody(notes,lrc){
 }
 function makeOwnSong(rec){
   const s={id:rec.id,title:rec.title,artist:rec.artist,year:rec.year,album:rec.album,color:rec.color,own:true,vibe:'Your own track',
-    lrc:rec.lrc,autoOff:rec.autoOff||0,userOff:0,an:rec.an,len:rec.an.dur,dur:rec.an.dur,endT:rec.an.dur-.05,notes:rec.notes||[],wt:rec.wt||null};
+    lrc:rec.lrc,autoOff:rec.autoOff||0,userOff:0,an:rec.an,len:rec.an.dur,dur:rec.an.dur,endT:rec.an.dur-.05,notes:rec.notes||[],wt:rec.wt||null,mv:rec.mv||1};
   setRange(s);buildOwnLines(s);buildMood(s);return s;
 }
 async function loadOwnTracks(song){
@@ -2026,7 +2062,7 @@ $('ownGo').onclick=async()=>{
   const h=parseInt(p.id.slice(4,10),16)||0;
   // a backing track a few seconds longer than the original usually has a count-in at the start
   const rec={id:p.id,title:f.title,artist:f.artist,album:f.album,year:f.year,color:OWN_PAL[h%OWN_PAL.length],lrc:f.lrc,
-    autoOff:al!=null?al:d>.8&&d<8?+d.toFixed(2):0,userOff:0,an:p.an,blob:back.blob,added:Date.now(),vocal:v?v.file:null,notes:v?v.notes:null,wt:v?v.wt:null,ai:v?v.ai:null};
+    autoOff:al!=null?al:d>.8&&d<8?+d.toFixed(2):0,userOff:0,an:p.an,blob:back.blob,added:Date.now(),vocal:v?v.file:null,notes:v?v.notes:null,mv:MELODY_V,wt:v?v.wt:null,ai:v?v.ai:null};
   const song=makeOwnSong(rec);cache[song.id]=Promise.resolve({back:back.buf,guide:v?v.vb:null});
   await kv('put','track:'+rec.id,rec);
   const ids=(await kv('get','own:list'))||[];if(!ids.includes(rec.id)){ids.unshift(rec.id);await kv('put','own:list',ids);}
@@ -2195,7 +2231,7 @@ async function addVocal(file,tgt){
   if(pend){pendingOwn.vocal={file,vb,notes,al,wt,ai:verdict};ownFound();return;}
   if(al!=null)tgt.autoOff=al;tgt.wt=wt;
   tgt.notes=notes;setRange(tgt);buildOwnLines(tgt);
-  await saveOwnPatch(tgt.id,{vocal:file,notes,autoOff:tgt.autoOff,userOff:0,wt,ai:verdict});
+  await saveOwnPatch(tgt.id,{vocal:file,notes,mv:MELODY_V,autoOff:tgt.autoOff,userOff:0,wt,ai:verdict});
   const tr=await tracksFor(tgt);cache[tgt.id]=Promise.resolve({back:tr.back,guide:vb});
   closeOwn();openSheet(tgt);toast('In sync and ready to sing');
 }
