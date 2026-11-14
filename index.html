@@ -257,7 +257,7 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px so
 .bgvid{position:absolute;inset:0;width:100%!important;height:100%;max-width:none!important;margin:0!important;object-fit:cover;z-index:-2;pointer-events:none;
   filter:grayscale(1) contrast(1.25) brightness(1.05);mix-blend-mode:overlay;opacity:0;transition:opacity 1.2s ease}
 #sing.video .bgvid{opacity:.62}
-#sing.video .bgvid[data-scene=pop],#sing.video .bgvid[data-scene=rap]{opacity:.5}
+#sing.video .bgvid[data-scene=pop],#sing.video .bgvid[data-scene=rap],#sing.video .bgvid[data-scene=rnb]{opacity:.5}
 #sing.video .lights{opacity:calc(var(--lights,.45)*.45)}
 .lights{position:absolute;inset:0;z-index:-1;pointer-events:none;overflow:hidden;opacity:var(--lights,.45);transition:opacity 2.5s ease;max-width:none!important}
 .lights i{transition:transform 1.25s cubic-bezier(.6,0,.15,1),opacity 1.25s ease;position:absolute;top:-14%;width:64vmax;height:150%;margin-left:-32vmax;transform-origin:50% 0;
@@ -1310,12 +1310,13 @@ const videoOn=()=>pref('video',reduceMotion?'0':'1')==='1';
 $('video').checked=videoOn();
 $('video').onchange=()=>setPref('video',$('video').checked?'1':'0');
 // One loop per kind of music. Add a scene here (and its clip in /backdrops) and point genres at it below.
-const SCENES={rock:'band',pop:'pop',rap:'rap'};
+const SCENES={rock:'band',pop:'pop',rap:'rap',rnb:'rnb'};
 // Belt's own songs: a live band suits the brassy and old-time ones, a singer in the spotlight suits the rest.
-const SCENE_OF={saints:'rock',daisy:'rock',bday:'pop',jingle:'pop',grace:'pop'};
+const SCENE_OF={saints:'rock',daisy:'rock',bday:'pop',jingle:'pop',grace:'rnb'};
 // Your own songs: the artist's genres from MusicBrainz, sorted into a scene. Anything we don't have a loop for yet goes to pop.
 const SCENE_WORDS=[[/rock|punk|metal|grunge|garage|indie|emo|alternative|post-|shoegaze|hardcore|ska|britpop|new wave|blues|jazz|country|folk|americana|bluegrass/,'rock'],
-  [/hip.?hop|rap|trap|drill|grime/,'rap'],[/pop|dance|disco|house|electro|edm|r&b|rnb|soul|funk|k-pop|synth|latin|reggaeton/,'pop']];
+  [/hip.?hop|rap|trap|drill|grime/,'rap'],[/r&b|rnb|rhythm and blues|soul|funk|gospel|quiet storm|new jack swing|motown/,'rnb'],
+  [/pop|dance|disco|house|electro|edm|k-pop|synth|latin|reggaeton/,'pop']];
 function sceneFromTags(tags){
   const score={};for(const t of tags||[]){const name=String(t.name||'').toLowerCase(),w=+t.count||1;
     for(const [re,sc] of SCENE_WORDS)if(re.test(name)){score[sc]=(score[sc]||0)+w;break;}}
