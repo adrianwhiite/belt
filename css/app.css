@@ -63,7 +63,10 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px so
 .tonight small{display:block;font-size:13px;font-weight:700;color:var(--muted)}
 .tonight b{display:block;font-size:19px;font-weight:800;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tonight em{font-style:normal;font-size:15px;font-weight:700;color:var(--mint)}
-.gbtn{color-scheme:light;display:flex;justify-content:center;min-height:44px;margin-bottom:10px}
+.gbtn{color-scheme:light;display:flex;justify-content:center;align-items:center;height:40px}
+/* Google's button tops out at 40px tall and 400px wide, so the buttons beside it match that exactly */
+#authSheet .btn{min-height:40px;height:40px;width:min(100%,400px);align-self:center;font-size:15px;font-weight:600;letter-spacing:0}
+#authSheet .btn svg{width:18px!important;height:18px!important}
 .legal{display:flex;justify-content:center;gap:20px;margin-top:12px}
 .legal a{font-size:13px;font-weight:600;color:var(--muted);text-decoration:none;padding:4px 2px}
 .legal a:focus-visible{outline:2px solid currentColor;outline-offset:2px;border-radius:4px}

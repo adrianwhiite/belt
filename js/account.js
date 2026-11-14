@@ -72,7 +72,7 @@ async function googleButton(){
       callback:async r=>{const {error}=await S.sb.auth.signInWithIdToken({provider:'google',token:r.credential,nonce:raw});
         if(error){console.warn('google id token',error);toast('Google sign-in didn’t finish. Try again.');googleButton();}}});
     const box=$('gbtn');box.innerHTML='';
-    g.accounts.id.renderButton(box,{type:'standard',theme:'filled_black',size:'large',shape:'pill',text:'continue_with',logo_alignment:'center',width:Math.min(400,Math.max(240,$('authSheet').clientWidth-48))});
+    g.accounts.id.renderButton(box,{type:'standard',theme:'filled_black',size:'large',shape:'pill',text:'continue_with',logo_alignment:'center',width:Math.min(400,Math.max(240,$('authSheet').clientWidth-40))});
     box.hidden=false;$('google').hidden=true;
   }catch(e){console.warn('google button',e);$('gbtn').hidden=true;$('google').hidden=false;}
 }
