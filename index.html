@@ -48,6 +48,7 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px so
 #home{overflow-y:auto}
 /* short screens (a phone on its side, a small laptop window): let pages scroll instead of squeezing */
 @media (max-height:600px){#home .meter{min-height:56px;margin:16px 0 14px}#pick .wheel-wrap{min-height:240px;flex:none}#sing{overflow-y:auto}#sing .lyrics{padding-top:3vh;min-height:170px;flex:1 0 auto}}
+.lanewrap{position:relative}
 .screen > *{width:100%;max-width:520px;margin-left:auto;margin-right:auto;flex-shrink:0} /* pages scroll rather than squash; parts that should stretch say flex:1 */
 .btn{display:flex;align-items:center;justify-content:center;width:100%;min-height:58px;border-radius:99px;font-size:19px;font-weight:700;letter-spacing:-.01em;background:var(--paper);color:var(--ink);transition:transform .12s ease;flex:none}
 .btn:active{transform:scale(.97)}
@@ -202,6 +203,15 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px so
 #sing{background:var(--song);color:var(--ink);isolation:isolate;overflow:hidden}
 .sing-head{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:700;min-height:44px}
 .sing-head .icon{margin-left:-10px}
+#quit svg{width:22px;height:22px}#quit .ic-pause{display:none}
+#sing.live #quit .ic-pause{display:block}#sing.live #quit .ic-x{display:none}
+/* your mic level, drawn as Belt's five bars: they jump when the app can hear you */
+.micm{display:flex;align-items:flex-end;gap:2px;height:16px;flex:none;margin-right:2px}
+.micm i{width:3.5px;height:100%;border-radius:2px;background:currentColor;opacity:.22;transform-origin:bottom;transform:scaleY(.25);transition:transform .08s linear}
+#sing:not(.live) .micm,#sing.demo .micm{display:none}
+/* skip a long intro */
+.skip{position:absolute;left:50%;bottom:calc(100% + 10px);transform:translateX(-50%);z-index:2;font-size:15px;font-weight:800;padding:0 18px;min-height:44px;border-radius:99px;background:var(--ink);color:var(--paper);box-shadow:0 8px 18px -8px rgba(29,22,49,.5)}
+.skip[hidden]{display:none}
 .sing-title{flex:1;min-width:0;display:flex;align-items:center;gap:10px}
 .sing-title b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #left{opacity:.7;font-variant-numeric:tabular-nums;flex:none}
@@ -513,8 +523,9 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
   <video class="bgvid" id="bgvid" muted playsinline loop preload="none" aria-hidden="true" tabindex="-1" disablepictureinpicture></video>
   <div class="lights" aria-hidden="true"><i></i><i></i><i></i></div>
   <header class="sing-head">
-    <button class="icon" id="quit" aria-label="Leave the stage">&#10005;</button>
+    <button class="icon" id="quit" aria-label="Leave the stage"><svg class="ic-x" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg><svg class="ic-pause" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4.2" height="14" rx="1.6" fill="currentColor"/><rect x="13.8" y="5" width="4.2" height="14" rx="1.6" fill="currentColor"/></svg></button>
     <span class="sing-title"><span class="mini"><svg class="belter" id="rider" data-me="1" data-bust="head" viewBox="16 0 88 96"></svg></span><b id="singTitle"></b></span>
+    <span class="micm" id="micMeter" role="img" aria-label="Your microphone level"><i></i><i></i><i></i><i></i><i></i></span>
     <span id="left"></span>
     <button class="icon" id="volBtn" aria-label="Music volume" aria-expanded="false" aria-controls="volRow"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.2L12 5.5v13l-4.8-4H4z" fill="currentColor"/><path d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a7.8 7.8 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></button>
   </header>
@@ -530,7 +541,10 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
     <p class="ln cur" id="lineNow"></p>
     <p class="ln n1" id="lnN1"></p><p class="ln n2" id="lnN2"></p><p class="ln n3" id="lnN3"></p><p class="ln n4" id="lnN4"></p>
   </div>
+  <div class="lanewrap">
+  <button class="skip" id="skipIntro" hidden>Skip intro</button>
   <div class="lanebox"><canvas id="lane" aria-label="Your pitch moving along the melody"></canvas></div>
+  </div>
   <p class="mic-label" id="micLabel"></p>
 </section>
 
@@ -650,11 +664,11 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
 </div>
 
 <div class="sheet" id="quitSheet" role="dialog" aria-modal="true" aria-labelledby="quitTitle">
-  <h3 id="quitTitle">Leave the stage?</h3>
-  <p class="sheet-meta">Finish early to hear what you’ve sung so far and see how you did.</p>
-  <button class="btn ink" id="qFinish">Finish early</button>
-  <button class="btn ghost-ink" id="qEnd">End song</button>
-  <button class="text-btn" id="qKeep">Keep singing</button>
+  <h3 id="quitTitle">Paused</h3>
+  <p class="sheet-meta">The song waits for you. Finish now to hear what you’ve sung so far and see how you did.</p>
+  <button class="btn ink" id="qKeep">Keep singing</button>
+  <button class="btn ghost-ink" id="qFinish">Finish and see my score</button>
+  <div class="row2"><button class="btn ghost-ink" id="qAgain">Start over</button><button class="btn ghost-ink" id="qEnd">Quit song</button></div>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
@@ -1329,7 +1343,7 @@ function backdrop(on,song){
 }
 function readySong(){
   stopMix();run=null;
-  const song=current,sg=$('sing');backdrop(videoOn(),song);
+  const song=current,sg=$('sing');backdrop(videoOn(),song);sg.classList.toggle('demo',!!demo);$('skipIntro').hidden=true;
   $('singTitle').textContent=song.title;
   $('micLabel').textContent=demo?'The mic is off, so you’ll hear a pretend singer':'';
   ['lineNow','lnN1','lnN2','lnN3','lnN4'].forEach(id=>$(id).textContent='');$('breath').classList.remove('on');
@@ -1447,6 +1461,21 @@ function drawLane(song,t,lvl){
     else{const tick=ox=>{g.beginPath();g.moveTo(cx+ox-ic*.38,py+ic*.02);g.lineTo(cx+ox-ic*.1,py+ic*.3);g.lineTo(cx+ox+ic*.38,py-ic*.32);g.stroke();};if(run.pop.g===1){tick(-ic*.18);tick(ic*.22);}else tick(0);}
     g.fillStyle=col;g.fillText(txt,px+ic+15,py+.5);g.restore();}}
 }
+const micBuf=new Float32Array(1024),MIC_COLS=['#ff5d8f','#3ddc97','#ffb020','#9b8aff','#4cc9f0'];let micLv=0;
+function paintMicMeter(){
+  if(!analyser||demo)return;
+  analyser.getFloatTimeDomainData(micBuf);let e=0;for(let i=0;i<micBuf.length;i++)e+=micBuf[i]*micBuf[i];
+  const db=20*Math.log10(Math.sqrt(e/micBuf.length)+1e-6),v=Math.max(0,Math.min(1,(db+58)/40));micLv=v>micLv?v:micLv*.9+v*.1;
+  const bars=$('micMeter').children;
+  for(let k=0;k<5;k++){const on=micLv>k*.2+.04,h=on?Math.min(1,.35+(micLv-k*.2)*3.2):.25;bars[k].style.transform=`scaleY(${h.toFixed(2)})`;bars[k].style.opacity=on?1:.22;bars[k].style.background=on?MIC_COLS[k]:'';}
+}
+// Skip a long intro: jump to a few seconds before the first words. Your recording starts from there.
+$('skipIntro').onclick=()=>{
+  if(!run||ctx.state!=='running')return;const song=run.song,to=song.lines[0].start-4,t=songTime();if(to<=t+1)return;
+  const now=ctx.currentTime,at=now+.06;
+  for(const x of [run.back,run.gd].filter(Boolean)){try{x.s.stop(now+.05);}catch(e){}const n=ctx.createBufferSource();n.buffer=x.s.buffer;n.connect(x.g);n.start(at,Math.max(0,to));x.s=n;}
+  run.startAt=at-to;run.chunks=[];run.recT=null;run.trail=[];$('skipIntro').hidden=true;
+};
 function songTime(){return ctx.currentTime-(ctx.outputLatency||0)-run.startAt;}
 function setLines(song,idx){
   const ls=song.lines,txt=k=>ls[k]?ls[k].text:'';
@@ -1476,6 +1505,8 @@ function loop(){
    $('breath').classList.toggle('on',on);}
   $('prog').style.width=Math.max(0,Math.min(100,(t-song.lead)/(song.lastEnd-song.lead)*100))+'%';
   $('left').textContent=fmtLen(song.lastEnd-Math.max(0,t))+' left';
+  paintMicMeter();
+  {const first=song.lines[0],long=first&&first.start-t>9&&t>-1;if($('skipIntro').hidden===long)$('skipIntro').hidden=!long;}
   // live pitch
   if(inKeyMode(song)){ownLive(song,t);if(t>song.endT){finish();return;}requestAnimationFrame(loop);return;}
   if(song.own)paintMood(song,t);
@@ -1534,12 +1565,13 @@ function stopRun(){
 function leaveStage(){stayAwake(false);releaseMic();backdrop(false);clearTimeout($('sing')._t);$('sing').classList.remove('live','is-ready','clearing');$('sing').style.background='';show('pick');}
 function openQuit(){$('scrim').classList.add('on');$('quitSheet').classList.add('on');$('qKeep').focus();}
 function closeQuit(){$('quitSheet').classList.remove('on');$('scrim').classList.remove('on');if(ctx&&ctx.state==='suspended')ctx.resume();}
-$('quit').onclick=()=>{
+$('quit').onclick=()=>{ // while singing this is a pause button
   if(!run){leaveStage();return;}
-  if(ctx.state==='running')ctx.suspend(); // pause everything while you decide
+  if(ctx.state==='running')ctx.suspend(); // pause everything: music, recording and the clock
   openQuit();
 };
 $('qKeep').onclick=closeQuit;
+$('qAgain').onclick=()=>{closeQuit();stopRun();run=null;readySong();};
 $('qEnd').onclick=()=>{closeQuit();stopRun();run=null;leaveStage();};
 $('qFinish').onclick=()=>{if(!run){closeQuit();return;}run.stopT=Math.max(0,songTime());closeQuit();finish();};
 $('scrim').addEventListener('click',()=>{if($('quitSheet').classList.contains('on'))closeQuit();});
