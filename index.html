@@ -247,6 +247,7 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px so
 .bgvid{position:absolute;inset:0;width:100%!important;height:100%;max-width:none!important;margin:0!important;object-fit:cover;z-index:-2;pointer-events:none;
   filter:grayscale(1) contrast(1.25) brightness(1.05);mix-blend-mode:overlay;opacity:0;transition:opacity 1.2s ease}
 #sing.video .bgvid{opacity:.62}
+#sing.video .bgvid[data-scene=pop]{opacity:.5}
 #sing.video .lights{opacity:calc(var(--lights,.45)*.45)}
 .lights{position:absolute;inset:0;z-index:-1;pointer-events:none;overflow:hidden;opacity:var(--lights,.45);transition:opacity 2.5s ease;max-width:none!important}
 .lights i{transition:transform 1.25s cubic-bezier(.6,0,.15,1),opacity 1.25s ease;position:absolute;top:-14%;width:64vmax;height:150%;margin-left:-32vmax;transform-origin:50% 0;
@@ -1294,14 +1295,41 @@ const rider=()=>$('rider')._b;
 const videoOn=()=>pref('video',reduceMotion?'0':'1')==='1';
 $('video').checked=videoOn();
 $('video').onchange=()=>setPref('video',$('video').checked?'1':'0');
-function backdrop(on){
+// One loop per kind of music. Add a scene here (and its clip in /backdrops) and point genres at it below.
+const SCENES={rock:'band',pop:'pop'};
+// Belt's own songs: a live band suits the brassy and old-time ones, a singer in the spotlight suits the rest.
+const SCENE_OF={saints:'rock',daisy:'rock',bday:'pop',jingle:'pop',grace:'pop'};
+// Your own songs: the artist's genres from MusicBrainz, sorted into a scene. Anything we don't have a loop for yet goes to pop.
+const SCENE_WORDS=[[/rock|punk|metal|grunge|garage|indie|emo|alternative|post-|shoegaze|hardcore|ska|britpop|new wave|blues|jazz|country|folk|americana|bluegrass/,'rock'],
+  [/hip.?hop|rap|trap|drill|grime/,'rap'],[/pop|dance|disco|house|electro|edm|r&b|rnb|soul|funk|k-pop|synth|latin|reggaeton/,'pop']];
+function sceneFromTags(tags){
+  const score={};for(const t of tags||[]){const name=String(t.name||'').toLowerCase(),w=+t.count||1;
+    for(const [re,sc] of SCENE_WORDS)if(re.test(name)){score[sc]=(score[sc]||0)+w;break;}}
+  const best=Object.entries(score).sort((a,b)=>b[1]-a[1])[0];return best?best[0]:null;
+}
+async function findScene(song){
+  if(!song.own)return SCENE_OF[song.id]||'pop';
+  if(song.scene)return song.scene;
+  if(!song.artist)return 'pop';
+  try{
+    const j=await getJSON(`https://musicbrainz.org/ws/2/artist/?query=${encodeURIComponent('artist:"'+song.artist.replace(/"/g,'')+'"')}&fmt=json&limit=3`,6000);
+    const a=(j.artists||[]).find(x=>(+x.score||0)>=90)||(j.artists||[])[0];
+    const sc=sceneFromTags([...(a&&a.genres||[]),...(a&&a.tags||[])])||'pop';
+    song.scene=sc;saveOwnPatch(song.id,{scene:sc});return sc;
+  }catch(e){return 'pop';}
+}
+function backdrop(on,song){
   const v=$('bgvid'),sg=$('sing');sg.classList.toggle('video',on);
-  if(on){if(!v.src){v.poster='/backdrops/band.jpg';v.src='/backdrops/band.mp4';}const p=v.play();if(p&&p.catch)p.catch(()=>sg.classList.remove('video'));}
-  else v.pause();
+  if(!on){v.pause();return;}
+  const set=sc=>{const name=SCENES[sc]||SCENES.pop;if(v.dataset.scene===name)return;v.dataset.scene=name;v.poster=`/backdrops/${name}.jpg`;v.src=`/backdrops/${name}.mp4`;const p=v.play();if(p&&p.catch)p.catch(()=>{});};
+  const known=song&&(song.own?song.scene:SCENE_OF[song.id]);
+  set(known||'pop');
+  if(song&&!known)findScene(song).then(sc=>{if(current===song&&sg.classList.contains('video'))set(sc);});
+  const p=v.play();if(p&&p.catch)p.catch(()=>sg.classList.remove('video'));
 }
 function readySong(){
   stopMix();run=null;
-  const song=current,sg=$('sing');backdrop(videoOn());
+  const song=current,sg=$('sing');backdrop(videoOn(),song);
   $('singTitle').textContent=song.title;
   $('micLabel').textContent=demo?'The mic is off, so you’ll hear a pretend singer':'';
   ['lineNow','lnN1','lnN2','lnN3','lnN4'].forEach(id=>$(id).textContent='');$('breath').classList.remove('on');
@@ -2422,7 +2450,7 @@ function alignToMelody(notes,lrc){
 }
 function makeOwnSong(rec){
   const s={id:rec.id,title:rec.title,artist:rec.artist,year:rec.year,album:rec.album,color:rec.color,own:true,vibe:'Your own track',
-    lrc:rec.lrc,autoOff:rec.autoOff||0,userOff:0,lrcDur:rec.lrcDur||0,an:rec.an,len:rec.an.dur,dur:rec.an.dur,endT:rec.an.dur-.05,notes:rec.notes||[],wt:rec.wt||null,mv:rec.mv||1};
+    scene:rec.scene||null,lrc:rec.lrc,autoOff:rec.autoOff||0,userOff:0,lrcDur:rec.lrcDur||0,an:rec.an,len:rec.an.dur,dur:rec.an.dur,endT:rec.an.dur-.05,notes:rec.notes||[],wt:rec.wt||null,mv:rec.mv||1};
   setRange(s);buildOwnLines(s);buildMood(s);return s;
 }
 async function loadOwnTracks(song){
@@ -2695,7 +2723,7 @@ $('ownGo').onclick=async()=>{
   const song=makeOwnSong(rec);cache[song.id]=Promise.resolve({back:back.buf,guide:v?v.vb:null});
   await kv('put','track:'+rec.id,rec);
   const ids=(await kv('get','own:list'))||[];if(!ids.includes(rec.id)){ids.unshift(rec.id);await kv('put','own:list',ids);}
-  const item=addToWheel(song);pendingOwn=null;closeOwn();
+  const item=addToWheel(song);pendingOwn=null;closeOwn();findScene(song); // pick its music video now, so it's ready on the stage
   filter='ready';renderChips();
   renderWheel(item);openSheet(song);
 };
