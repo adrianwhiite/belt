@@ -13,3 +13,7 @@ python3 tests/run.py stage    # just one: screens, stage, share, timing, flow
 - Outside services (Supabase, LRCLIB, MusicBrainz, the AI functions) are stubbed, so no keys or network are needed.
 
 Run the whole suite before every push.
+
+## After editing css/ or js/
+
+Run `python3 tools/stamp.py`. It gives each file a new address in index.html so phones fetch the new version instead of an old cached one. `run.py` fails if you forget.

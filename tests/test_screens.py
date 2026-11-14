@@ -4,6 +4,7 @@ from common import *
 async def run(pw,c,w,h,tag):
     b=await browser(pw);pg=await page(b,w,h,1)
     await fresh(pg,prefs={'video':'0'});await shot(pg,f'{tag}_home')
+    c.ok(await pg.evaluate("performance.getEntriesByType('resource').some(e=>/\\/js\\/stage\\.js\\?v=/.test(e.name))"),f'{tag}: code files load with their stamps')
     await pg.click('#go');await pg.wait_for_timeout(1000);await shot(pg,f'{tag}_pick')
     await pg.click('#pickGo');await pg.wait_for_selector('#start:not([disabled])',timeout=30000);await shot(pg,f'{tag}_sheet')
     await pg.click('#start');await pg.wait_for_timeout(500);await shot(pg,f'{tag}_ready')

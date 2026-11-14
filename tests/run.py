@@ -4,6 +4,7 @@ from common import serve, HERE
 TESTS=['screens','stage','share','timing','flow']
 pick=[t for t in sys.argv[1:]] or TESTS
 srv=serve();bad=[]
+if subprocess.run([sys.executable,os.path.join(HERE,'..','tools','stamp.py'),'--check']).returncode:bad.append('stamps')
 for t in pick:
     t0=time.time();r=subprocess.run([sys.executable,os.path.join(HERE,f'test_{t}.py')])
     print(f'-- {t} {"passed" if r.returncode==0 else "FAILED"} in {time.time()-t0:.0f}s\n');bad+=[t] if r.returncode else []
