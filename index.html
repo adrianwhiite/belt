@@ -940,8 +940,9 @@ async function getMic(aec){
     src.connect(proc);proc.connect(z);z.connect(ctx.destination);
     proc.onaudioprocess=e=>{
       if(!run||!run.rec)return;
-      if(run.recT==null)run.recT=ctx.currentTime-e.inputBuffer.duration;
-      run.chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+      const pt=typeof e.playbackTime==='number'&&isFinite(e.playbackTime)?e.playbackTime:ctx.currentTime;
+      if(run.recT==null){run.recT=ctx.currentTime-e.inputBuffer.duration;run.pt0=pt;}
+      const c=new Float32Array(e.inputBuffer.getChannelData(0));c.at=run.recT+(pt-run.pt0);run.chunks.push(c);
     };
     return true;
   }catch(err){micStream=null;return false;}
@@ -1476,7 +1477,7 @@ $('skipIntro').onclick=()=>{
   if(!run||ctx.state!=='running')return;const song=run.song,to=song.lines[0].start-4,t=songTime();if(to<=t+1)return;
   const now=ctx.currentTime,at=now+.06;
   for(const x of [run.back,run.gd].filter(Boolean)){try{x.s.stop(now+.05);}catch(e){}const n=ctx.createBufferSource();n.buffer=x.s.buffer;n.connect(x.g);n.start(at,Math.max(0,to));x.s=n;}
-  run.startAt=at-to;run.chunks=[];run.recT=null;run.trail=[];$('skipIntro').hidden=true;
+  run.startAt=at-to;run.chunks=[];run.recT=null;run.pt0=null;run.trail=[];$('skipIntro').hidden=true;
 };
 function songTime(){return ctx.currentTime-(ctx.outputLatency||0)-run.startAt;}
 function setLines(song,idx){
@@ -1578,21 +1579,35 @@ $('qEnd').onclick=()=>{closeQuit();stopRun();run=null;leaveStage();};
 $('qFinish').onclick=()=>{if(!run){closeQuit();return;}run.stopT=Math.max(0,songTime());closeQuit();finish();};
 $('scrim').addEventListener('click',()=>{if($('quitSheet').classList.contains('on'))closeQuit();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('quitSheet').classList.contains('on'))closeQuit();});
-// How late the recording runs against the song, in samples. Compares where sounds start (onsets) in your voice
-// with the guide (the singer for your own songs, the melody for Belt's) over the whole take, and only trusts a clear match.
-function voiceLag(voice,ref,sr){
-  if(!ref)return 0;
-  const hop=Math.round(sr/100),n=Math.min(Math.floor(voice.length/hop),Math.floor(ref.length/hop));if(n<300)return 0;
-  const g=ref.getChannelData(0),onset=x=>{const e=new Float32Array(n),o=new Float32Array(n);
-    for(let i=0;i<n;i++){let s=0;for(let k=i*hop,m=k+hop;k<m;k++)s+=x[k]*x[k];e[i]=Math.log(1e-6+Math.sqrt(s/hop));}
-    for(let i=1;i<n;i++)o[i]=Math.max(0,e[i]-e[i-1]);let mu=0;for(const v of o)mu+=v;mu/=n;let sd=0;for(let i=0;i<n;i++){o[i]-=mu;sd+=o[i]*o[i];}sd=Math.sqrt(sd/n)||1;for(let i=0;i<n;i++)o[i]/=sd;return o;};
-  const a=onset(voice),b=onset(g),score=L=>{let s=0;for(let i=Math.max(0,-L);i<n&&i+L<n;i++)s+=a[i+L]*b[i];return s/n;};
-  let best=0,bs=-1e9;const all=[];
-  for(let L=-8;L<=45;L++){const v=score(L);all.push(v);if(v>bs){bs=v;best=L;}}   // -80 ms to +450 ms
-  const sorted=[...all].sort((x,y)=>x-y),med=sorted[sorted.length>>1];
-  // a real match stands well above the rest, and is clearly better than leaving it alone
-  if(bs<.08||bs-med<.05||bs-score(0)<.02)return 0;
-  return best*hop;
+// How late the recording runs against the song, in samples. Phones don't report every delay, so Belt measures it from the take.
+// Two listeners: (1) the song itself leaking from the speaker into the mic, which pins the delay exactly, and
+// (2) where your notes start against the guide. Each must find one clear, standout answer or it's ignored.
+// When neither is sure, Belt uses what it measured on this phone's recent takes.
+let lagInfo='';
+function onsetCurve(x,n,hop){
+  const e=new Float32Array(n),o=new Float32Array(n);
+  for(let i=0;i<n;i++){let s=0;for(let k=i*hop,m=k+hop;k<m;k++)s+=x[k]*x[k];e[i]=Math.log(1e-6+Math.sqrt(s/hop));}
+  for(let i=1;i<n;i++)o[i]=Math.max(0,e[i]-e[i-1]);let mu=0;for(const v of o)mu+=v;mu/=n;let sd=0;for(let i=0;i<n;i++){o[i]-=mu;sd+=o[i]*o[i];}sd=Math.sqrt(sd/n)||1;for(let i=0;i<n;i++)o[i]/=sd;return o;
+}
+function lagAgainst(a,b,n){ // returns the best shift (in 10 ms steps) and how far it stands out from the rest
+  const LO=-30,HI=60,sc=[];for(let L=LO;L<=HI;L++){let s=0;for(let i=Math.max(0,-L);i<n&&i+L<n;i++)s+=a[i+L]*b[i];sc.push(s/n);}
+  let bi=0;for(let i=1;i<sc.length;i++)if(sc[i]>sc[bi])bi=i;
+  const rest=sc.filter((_,i)=>Math.abs(i-bi)>4),mu=rest.reduce((p,c)=>p+c,0)/rest.length,sd=Math.sqrt(rest.reduce((p,c)=>p+(c-mu)*(c-mu),0)/rest.length)||1e-9;
+  return {L:bi+LO,z:(sc[bi]-mu)/sd,peak:sc[bi]};
+}
+function voiceLag(voice,tr,sr){
+  const hop=Math.round(sr/100),n=Math.min(Math.floor(voice.length/hop),Math.floor(tr.back.length/hop));if(n<300){lagInfo='short';return 0;}
+  const v=onsetCurve(voice,n,hop),ok=r=>r&&r.L>=-6&&r.L<=45;
+  const bleed=lagAgainst(v,onsetCurve(tr.back.getChannelData(0),n,hop),n),sing=tr.guide?lagAgainst(v,onsetCurve(tr.guide.getChannelData(0),n,hop),n):null;
+  let past=[];try{past=JSON.parse(pref('lags','[]'));}catch(e){}
+  let L=null,how='';
+  if(ok(bleed)&&bleed.z>=6&&bleed.peak>=.1){L=bleed.L;how='speaker';}
+  else if(ok(sing)&&sing.z>=5&&sing.peak>=.08){L=sing.L;how='voice';}
+  if(L!=null){past=[...past,L].slice(-7);setPref('lags',JSON.stringify(past));}
+  else if(past.length>=2){L=[...past].sort((x,y)=>x-y)[past.length>>1];how='remembered';}
+  else{L=0;how='unsure';}
+  lagInfo=`${L*10}ms (${how}; speaker z=${bleed.z.toFixed(1)} at ${bleed.L*10}, voice z=${sing?sing.z.toFixed(1):'-'} at ${sing?sing.L*10:'-'})`;
+  return L*hop;
 }
 function finish(){
   const r=run;r.rec=false;stopRun();run=null;clearTimeout($('sing')._t);$('sing').classList.remove('live','clearing');
@@ -1605,10 +1620,12 @@ function finish(){
     else{
       const total=Math.ceil(song.dur*sr);voice=new Float32Array(total);
       const comp=(ctx.outputLatency||0)+(ctx.baseLatency||0)+(r.inLat||0);
-      let i0=Math.round(((r.recT??r.startAt)-r.startAt-comp)*sr);
-      for(const c of r.chunks){for(let i=0;i<c.length;i++){const j=i0+i;if(j>=0&&j<total)voice[j]=c[i];}i0+=c.length;}
+      let i0=Math.round(((r.recT??r.startAt)-r.startAt-comp)*sr),drops=0;
+      for(const c of r.chunks){ // place each chunk by its own clock time; if the phone dropped some audio, leave a gap there
+        if(c.at!=null){const want=Math.round((c.at-r.startAt-comp)*sr);if(Math.abs(want-i0)>c.length*.5){i0=want;drops++;}}
+        for(let i=0;i<c.length;i++){const j=i0+i;if(j>=0&&j<total)voice[j]=c[i];}i0+=c.length;}
       // phones don't report every delay (Bluetooth, the mic itself), so line your voice up with the song by ear
-      const lag=voiceLag(voice,tracks.guide,sr);
+      const lag=voiceLag(voice,tracks,sr);console.log('belt take: drops',drops,'lag',lagInfo);
       if(lag){const v2=new Float32Array(total);if(lag>0)v2.set(voice.subarray(lag));else v2.set(voice.subarray(0,total+lag),-lag);voice=v2;}
     }
     const until=r.stopT??null,sc=scoreTake(song,voice,sr,until);
