@@ -328,7 +328,7 @@ export function openPicker(keep){ensureCtx();show('pick');renderChips();if(focus
   paintMute();startPreviews();}
 // The next page washes over this one as a circle that grows out of whatever you tapped,
 // while the page underneath eases back and dims.
-function wash(el,update){
+export function wash(el,update){
   if(!document.startViewTransition||reduceMotion){update();return;}
   const r=(el||document.body).getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2;
   const R=Math.hypot(Math.max(x,innerWidth-x),Math.max(y,innerHeight-y)),r0=Math.min(r.height,r.width)/2;
@@ -338,7 +338,6 @@ function wash(el,update){
     de.animate({transform:['scale(1)','scale(.95)'],opacity:[1,.55]},{duration:680,easing:ease,fill:'forwards',pseudoElement:'::view-transition-old(root)'});
   }).catch(()=>{});
 }
-$('go').onclick=e=>wash(e.currentTarget,()=>openPicker());
 $('pickBack').onclick=e=>wash(e.currentTarget,()=>{show('home');paintTonight();});
 // A challenge link (letsbelt.com/?c=song.score.name) opens Belt with that song up front and a score to beat.
 S.challenge=null;

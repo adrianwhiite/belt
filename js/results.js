@@ -1,4 +1,5 @@
 import {S} from './state.js';
+import {currentMode} from './modes.js';
 import {CROWD,lineStatsFor} from './profile.js';
 import {$,esc,pref,reduceMotion,setPref} from './util.js';
 import {ctx,ensureCtx,getMic,show} from './audio.js';
@@ -18,6 +19,7 @@ const FUN=['That was a whole moment','Encore!','Main character energy','That one
 const coachPref=()=>{try{return localStorage.getItem('belt.coach')==='on';}catch(e){return false;}};
 const setCoachPref=v=>{try{localStorage.setItem('belt.coach',v?'on':'off');}catch(e){}};
 export function showResults(){
+  try{const m=currentMode();if(m.onResult&&S.last)m.onResult(S.last);}catch(e){console.warn('belt: mode',e);}
   const {song,sc}=S.last;
   $('resSong').textContent=song.title;
   const quiet=sc.cover<.15;

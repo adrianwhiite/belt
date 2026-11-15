@@ -10,6 +10,8 @@
 //   own-setup  recognising the song, the library, the upload flow
 //   ai         the belt-ai server function (separation, word timing)
 //   nav        challenge links and the back button
+//   modes      ways to play: the home screen's buttons, and hooks for each mode
+//   profile    your singing stats over time
 //   state      values several parts change (S.current, S.run, S.last, S.user...)
 import './util.js';
 import './songs.js';
@@ -22,6 +24,7 @@ import './own.js';
 import './own-setup.js';
 import './ai.js';
 import './nav.js';
+import './modes.js';
 import {S} from './state.js';
 import {$} from './util.js';
 import {SONGS} from './songs.js';

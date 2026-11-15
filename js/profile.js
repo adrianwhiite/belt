@@ -32,7 +32,7 @@ export function performanceRow(song,sc,until,lagSamples,sr){
     for(const o of per){const k=o.n.midi<lo?'low':o.n.midi>hi?'high':'mid';g[k][0]+=o.dsum;g[k][1]+=o.voiced;}
     sharp_flat=Object.fromEntries(Object.entries(g).filter(([,v])=>v[1]).map(([k,v])=>[k,Math.round(v[0]/v[1]*100)]));}
   return {
-    song_id:song.id,song_title:song.title,own:!!song.own,mode:'karaoke',
+    song_id:song.id,song_title:song.title,own:!!song.own,mode:S.mode||'karaoke',
     score:Math.max(0,Math.min(100,Math.round(sc.acc*100))),cover:+sc.cover.toFixed(3),
     sang_seconds:+st.filter(x=>x.sung).reduce((a,x)=>a+(x.L.end-x.L.start),0).toFixed(1),
     finished:until==null,
