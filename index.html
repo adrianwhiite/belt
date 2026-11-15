@@ -26,7 +26,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/app.css?v=8bd2600a31">
+<link rel="stylesheet" href="/css/app.css?v=14ad688095">
 </head>
 <body>
 
@@ -205,8 +205,9 @@
 <section id="mine" class="screen" aria-label="Your profile">
   <div class="prof-top"><button id="mineBack">&#8592; Songs</button><button id="editMe">Edit</button></div>
   <div class="who"><span class="av"><svg class="belter" id="meBig" data-me="1" data-mic="none" viewBox="0 -4 120 140"></svg></span><div><b id="meName">You</b><small id="meSub"></small></div></div>
-  <div class="stats"><div><b id="stTakes">0</b><span>Takes</span></div><div><b id="stTop">–</b><span>Top note</span></div><div><b id="stBest">–</b><span>Best score</span></div></div>
-  <div class="set"><h3>My setlist</h3><ul class="takes" id="takes"></ul></div>
+  <div class="voice" id="voiceCard" aria-live="polite"></div>
+  <div class="stats"><div><b id="stNights">0</b><span>Nights sung</span></div><div><b id="stSongs">0</b><span>Songs sung</span></div><div><b id="stBest">–</b><span>Best score</span></div></div>
+  <div class="set"><h3>Your tickets</h3><ul class="takes" id="takes"></ul></div>
   <div class="prof-foot">
     <button class="btn ink" id="shareSet">Share my setlist</button>
     <button class="text-btn" id="signOut">Sign out</button>
@@ -270,16 +271,17 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.1"></script>
 <script type="importmap">{
  "imports": {
-  "/js/account.js": "/js/account.js?v=1dcf85341a",
+  "/js/account.js": "/js/account.js?v=3fd5619d05",
   "/js/ai.js": "/js/ai.js?v=7e19ba50c1",
-  "/js/audio.js": "/js/audio.js?v=e5c7c110d5",
+  "/js/audio.js": "/js/audio.js?v=bdc5727312",
   "/js/nav.js": "/js/nav.js?v=0ce120e2a7",
   "/js/own-setup.js": "/js/own-setup.js?v=700fc3b227",
   "/js/own.js": "/js/own.js?v=e69929ea21",
   "/js/picker.js": "/js/picker.js?v=b076e65b95",
-  "/js/results.js": "/js/results.js?v=193c08b04b",
+  "/js/profile.js": "/js/profile.js?v=31abcdd3d4",
+  "/js/results.js": "/js/results.js?v=08e9989930",
   "/js/songs.js": "/js/songs.js?v=20c4a05d81",
-  "/js/stage.js": "/js/stage.js?v=5b5b0c3b24",
+  "/js/stage.js": "/js/stage.js?v=ce0fa81acb",
   "/js/state.js": "/js/state.js?v=bf88b1bb63",
   "/js/util.js": "/js/util.js?v=644649005e"
  }

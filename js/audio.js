@@ -98,12 +98,12 @@ export function scoreIt(song,frames){
     const n=song.notes.find(n=>f.t>=n.t+.06&&f.t<n.t+n.d);
     if(!n)continue;
     inNote++;
-    if(f.m!=null)vs.push({t:f.t,n,diff:fold(f.m-n.midi)});
+    if(f.m!=null)vs.push({t:f.t,n,diff:fold(f.m-n.midi),fm:f.m});
   }
   const hitsAt=k=>vs.reduce((a,v)=>a+(Math.abs(fold(v.diff-k))<=.9),0);
   let key=0,best=hitsAt(0);
   for(let k=-6;k<6;k++){if(!k)continue;const h=hitsAt(k);if(h>best*1.15+2){best=h;key=k;}}
-  const pts=vs.map(v=>{const d=fold(v.diff-key);return {t:v.t,m:v.n.midi+d,ok:Math.abs(d)<=.9};});
+  const pts=vs.map(v=>{const d=fold(v.diff-key);return {t:v.t,m:v.n.midi+d,ok:Math.abs(d)<=.9,raw:v.fm};});
   const per=new Map();
   for(const f of frames){const n=song.notes.find(n=>f.t>=n.t+.06&&f.t<n.t+n.d);if(!n)continue;const o=per.get(n)||{n,frames:0,voiced:0,hits:0,dsum:0,ds:[]};o.frames++;per.set(n,o);}
   for(const v of vs){const o=per.get(v.n),d=fold(v.diff-key);o.voiced++;o.dsum+=d;o.ds.push(d);if(Math.abs(d)<=.9)o.hits++;}

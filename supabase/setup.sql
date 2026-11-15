@@ -38,3 +38,31 @@ create policy "Upload own recordings" on storage.objects for insert to authentic
   with check (bucket_id = 'takes' and (storage.foldername(name))[1] = auth.uid()::text);
 create policy "Delete own recordings" on storage.objects for delete to authenticated
   using (bucket_id = 'takes' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- Singing stats: one small row per finished take, so the profile can show your voice over time.
+-- Numbers only, never audio. Rows go when the account goes (on delete cascade).
+create table if not exists public.performances (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  song_id text not null,
+  song_title text not null,
+  own boolean not null default false,
+  mode text not null default 'karaoke',
+  score int check (score between 0 and 100),
+  cover real,
+  sang_seconds real,
+  finished boolean not null default true,
+  low_midi real,
+  high_midi real,
+  key_shift int not null default 0,
+  lines jsonb,
+  sharp_flat jsonb,
+  lag_ms int,
+  device text
+);
+create index if not exists performances_user_time on public.performances (user_id, created_at desc);
+alter table public.performances enable row level security;
+create policy "Read own performances"   on public.performances for select to authenticated using ((select auth.uid()) = user_id);
+create policy "Add own performances"    on public.performances for insert to authenticated with check ((select auth.uid()) = user_id);
+create policy "Delete own performances" on public.performances for delete to authenticated using ((select auth.uid()) = user_id);

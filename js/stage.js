@@ -1,4 +1,5 @@
 import {S} from './state.js';
+import {performanceRow,recordPerformance} from './profile.js';
 import {$,esc,pref,reduceMotion,setPref} from './util.js';
 import {analyser,cache,ctx,detectPitch,ensureCtx,fakeVoice,fold,getMic,micStream,monitor,pv,releaseMic,renderTracks,scoreIt,show,stayAwake} from './audio.js';
 import {AUTH,GENRE,INK,fmtLen,lenOf,poseBelter,rememberTake,resumePreview,stopPreview} from './picker.js';
@@ -369,7 +370,7 @@ function finish(){
   $('busy').classList.add('on');
   setTimeout(()=>{
    try{
-    const song=r.song,sr=ctx.sampleRate;let voice;
+    const song=r.song,sr=ctx.sampleRate;let voice,lag=0;
     if(S.demo)voice=inKeyMode(song)?fakeVoiceOwn(song,sr,r.fake):fakeVoice(song,sr);
     else{
       const total=Math.ceil(song.dur*sr);voice=new Float32Array(total);
@@ -379,11 +380,12 @@ function finish(){
         if(c.at!=null){const want=Math.round((c.at-r.startAt-comp)*sr);if(Math.abs(want-i0)>c.length*.5){i0=want;drops++;}}
         for(let i=0;i<c.length;i++){const j=i0+i;if(j>=0&&j<total)voice[j]=c[i];}i0+=c.length;}
       // phones don't report every delay (Bluetooth, the mic itself), so line your voice up with the song by ear
-      const lag=voiceLag(voice,S.tracks,sr);console.log('belt take: drops',drops,'lag',lagInfo);
+      lag=voiceLag(voice,S.tracks,sr);console.log('belt take: drops',drops,'lag',lagInfo);
       if(lag){const v2=new Float32Array(total);if(lag>0)v2.set(voice.subarray(lag));else v2.set(voice.subarray(0,total+lag),-lag);voice=v2;}
     }
     const until=r.stopT??null,sc=scoreTake(song,voice,sr,until);
-    S.last={song,voice,sc,until};if(!S.demo){rememberTake(song,sc);setPref('sung',String(+pref('sung','0')+1));}
+    S.last={song,voice,sc,until};if(!S.demo){rememberTake(song,sc);setPref('sung',String(+pref('sung','0')+1));
+      try{recordPerformance(performanceRow(song,sc,until,lag,sr)).catch(e=>console.warn('belt: performance',e));}catch(e){console.warn('belt: performance',e);}}
     $('busy').classList.remove('on');showResults();
    }catch(e){ // never leave anyone stuck on the stage
     console.error('finish',e);$('busy').classList.remove('on');

@@ -8,7 +8,7 @@ MB={"recordings":[{"title":"Test Song","score":100,"first-release-date":"1975-10
 STUB="""()=>{belt.user={id:'u1',email:'a@b.c',created_at:'2026-11-01',user_metadata:{full_name:'Test Singer'}};let sp=0;window.__calls=[];
  const lines=[];for(const i of [1,2,3,4,5,6,10,11,12,13,14]){const t0=i*4+9.4;const ws=('Line number '+i+' is this the real life').split(' ');
   lines.push({text:ws.join(' '),start:t0,end:t0+3,words:ws.map((w,k)=>({text:w,start:+(t0+k*.31).toFixed(2),end:+(t0+k*.31+.25).toFixed(2)}))});}
- belt.sb={auth:{signOut:async()=>{}},from:()=>({select:()=>({order:async()=>({data:[{id:1,song_title:'Jingle Bells',song_id:'jingle',score:91,created_at:'2026-11-10',audio_path:'x'}]})})}),
+ belt.sb={auth:{signOut:async()=>{}},from:t=>t==='performances'?{insert:async r=>{window.__perf=(window.__perf||[]).concat(r);return {};},select:()=>({order:()=>({limit:async()=>({data:(window.__perf||[]).map(x=>({...x,created_at:new Date().toISOString()}))})})})}:({select:()=>({order:async()=>({data:[{id:1,song_title:'Jingle Bells',song_id:'jingle',score:91,created_at:'2026-11-10',audio_path:'x'}]})})}),
   functions:{invoke:async(n,{body})=>{__calls.push(body.action);await new Promise(r=>setTimeout(r,150));
    if(body.action==='judge')return {data:{hasLeadVocal:true,matchesGuess:true,goodQuality:true,problems:[]}};
    if(body.action==='split_start')return {data:{id:'s1'}};
@@ -30,6 +30,9 @@ async def main():
         await pg.click('#start');await pg.wait_for_timeout(400);await pg.click('#readyGo')
         await pg.wait_for_selector('#result.on',timeout=90000);await pg.wait_for_timeout(400);await shot(pg,'flow_result')
         c.ok(await pg.evaluate("!!belt.last&&belt.last.sc.cover>0"),'built-in song finishes and scores')
+        await pg.evaluate("import('/js/profile.js').then(m=>m.recordPerformance(m.performanceRow(belt.last.song,belt.last.sc,null,0,48000)))")  # preview takes aren't kept, so save this one by hand
+        local=await pg.evaluate("JSON.parse(localStorage.getItem('belt.perfs')||'[]')")
+        c.ok(len(local)==1 and local[0]['song_id']=='jingle' and local[0]['score'] is not None,f'signed out: take stats wait on this device ({len(local)})')
         await pg.click('#another');await pg.wait_for_timeout(300);await pg.click('#mineBtn');await pg.wait_for_timeout(500)
         c.ok(await pg.evaluate("document.querySelector('.screen.on').id")=='mine','profile opens')
         await pg.evaluate(STUB);await pg.click('#mineBack');await pg.wait_for_timeout(300)
@@ -43,6 +46,11 @@ async def main():
         await pg.wait_for_selector('#result.on',timeout=60000);c.ok(True,'own song finishes early into results')
         await pg.click('#another');await pg.wait_for_timeout(400)
         c.ok(await pg.evaluate("belt.CATALOG.some(x=>x.song&&x.song.own)"),'own song is in the picker')
+        await pg.evaluate("import('/js/profile.js').then(m=>{const r=m.performanceRow(belt.last.song,belt.last.sc,belt.last.until,0,48000);return m.recordPerformance({...r,cover:Math.max(r.cover,.5)});})")
+        await pg.wait_for_timeout(500);rows=await pg.evaluate("window.__perf||[]")
+        c.ok(len(rows)>=2 and any(r['own'] for r in rows) and any(r['song_id']=='jingle' for r in rows),f'signed in: stats saved and earlier ones synced ({len(rows)})')
+        c.ok(await pg.evaluate("JSON.parse(localStorage.getItem('belt.perfs')||'[]').length")==0,'nothing left waiting after sync')
+        c.ok(all('audio' not in k for r in rows for k in r),'stats rows hold no audio')
         c.ok(not pg.errs,'no page errors '+str(pg.errs[:3]));await b.close()
     if srv:srv.terminate()
     c.done()

@@ -1,4 +1,5 @@
 import {S} from './state.js';
+import {CROWD,lineStatsFor} from './profile.js';
 import {$,esc,pref,reduceMotion,setPref} from './util.js';
 import {ctx,ensureCtx,getMic,show} from './audio.js';
 import {poseBelter} from './picker.js';
@@ -68,7 +69,6 @@ $('shareScore').onclick=async()=>{
   }catch(e){if(!(e&&e.name==='AbortError'))await copy();}
 };
 // The numbers: score counts up, then your top note and longest note (or how much you sang).
-const CROWD=[[90,'Standing ovation'],[78,'Lighters up'],[62,'Big cheers'],[45,'Warm applause'],[25,'Clapping along'],[0,'Brave first try']];
 function paintStats(quiet){
   const {song,sc}=S.last,own=inKeyMode(song),key=sc.key||0,box=$('rstats');
   $('rsScoreL').textContent='Notes hit';
@@ -176,15 +176,7 @@ $('cards').onclick=e=>{const b=e.target.closest('.card-hear');if(!b)return;const
 // Line by line: one bar per line of the song you reached. Taller and greener means more of that line was on pitch.
 // Tap a bar to see the words and hear yourself sing it.
 let gSel=null;
-function lineStats(){
-  const {song,sc}=S.last,end=S.last.until??1e9,out=[];let i=0;const pts=sc.pts;
-  for(const L of song.lines){if(L.start>end)break;
-    while(i<pts.length&&pts[i].t<L.start-.05)i++;let n=0,ok=0,j=i;
-    for(;j<pts.length&&pts[j].t<=L.end+.3;j++){n++;if(pts[j].ok)ok++;}
-    const need=Math.max(4,(Math.min(L.end,end)-L.start)*5); // sung at least a little of it
-    out.push({L,sung:n>=need,pct:n?ok/n:0});}
-  return out;
-}
+const lineStats=()=>lineStatsFor(S.last.song,S.last.sc,S.last.until);
 const lineCol=x=>!x.sung?'rgba(251,249,255,.16)':x.pct>=.7?'#3ddc97':x.pct>=.4?'#ffb020':'#ff7a59';
 function drawGraph(playT){
   const cv=$('graph'),dpr=window.devicePixelRatio||1;

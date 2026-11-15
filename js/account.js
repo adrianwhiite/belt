@@ -1,9 +1,10 @@
 import {S} from './state.js';
-import {$,esc,pref,setPref} from './util.js';
+import {bestPerSong,crowdFor,flushPerformances,loadPerformances,nights,rangeOf,scoreTrend,voiceLabel} from './profile.js';
+import {$,esc,pref,reduceMotion,setPref} from './util.js';
 import {SONGS} from './songs.js';
 import {ctx,ensureCtx,show} from './audio.js';
-import {GENRES,bests,buildBelter,myGenre,openPicker,paintAuth,paintMe} from './picker.js';
-import {scoreTake,tracksFor} from './stage.js';
+import {CATALOG,GENRES,bests,buildBelter,myGenre,openPicker,paintAuth,paintMe} from './picker.js';
+import {openSheet,scoreTake,tracksFor} from './stage.js';
 import {noteName,showResults,stopMix} from './results.js';
 
 /* ---------- Accounts (Supabase + Google). Singing never needs an account; Save does. ---------- */
@@ -87,31 +88,64 @@ async function flushPending(){
   try{await uploadTake(t);await kv('del','pending');toast('Saved to My songs');openMine();}
   catch(e){toast('Couldn’t save your take. Try again from the song.');}
 }
-// Profile: your Belter, a few stats and your setlist. Works signed out too.
+// Profile: your Belter, what your voice is like, a few numbers and your tickets. Works signed out too.
+const PIANO_LO=36,PIANO_HI=84,BLACK=new Set([1,3,6,8,10]);
+function pianoSVG(low,high){
+  const lo=Math.min(PIANO_LO,low-2)-(Math.min(PIANO_LO,low-2)%12),hi=Math.max(PIANO_HI,high+2);let whites=[],blacks=[];
+  for(let m=lo;m<=hi;m++)(BLACK.has(m%12)?blacks:whites).push(m);
+  const W=whites.length,ww=100/W,on=m=>m>=low&&m<=high;let x=0,out='';const xs={};
+  for(const m of whites){xs[m]=x;out+=`<rect x="${(x*ww).toFixed(2)}%" y="0" width="${(ww-.35).toFixed(2)}%" height="100%" rx="2" class="${on(m)?'kw on':'kw'}"/>`;x++;}
+  for(const m of blacks){const left=xs[m-1];if(left==null)continue;out+=`<rect x="${((left+1)*ww-ww*.32).toFixed(2)}%" y="0" width="${(ww*.64).toFixed(2)}%" height="60%" rx="1.5" class="${on(m)?'kb on':'kb'}"/>`;}
+  const pos=m=>((xs[m]??xs[m-1]??0)+.5)*ww;
+  return `<svg class="keys" role="img" aria-label="Your range on a piano, ${noteName(low)} to ${noteName(high)}" preserveAspectRatio="none">${out}</svg>
+    <div class="key-tags" aria-hidden="true"><span style="left:${pos(low).toFixed(1)}%">${noteName(low)}</span><span style="left:${pos(high).toFixed(1)}%">${noteName(high)}</span></div>`;
+}
+function firstSongOf(){const own=CATALOG.find(c=>c.song&&c.song.own);return own?own.song:SONG_BY_ID.jingle;}
+function paintVoice(rows){
+  const rg=rangeOf(rows),card=$('voiceCard');
+  if(!rg){const s=firstSongOf();
+    card.innerHTML=`<p class="v-kicker">Your voice</p><h4>Sing one song and Belt maps your voice</h4>
+      <p class="v-sub">Your range, the kind of voice you have and how it grows. Just the notes, never a recording.</p>
+      <button class="btn paper" id="firstSong">Sing ${esc(s.title)}</button>`;
+    $('firstSong').onclick=()=>{openPicker(CATALOG.find(c=>c.song===s));setTimeout(()=>openSheet(s),reduceMotion?0:300);};return;}
+  const v=voiceLabel(rg),tr=scoreTrend(rows,10);let trend='';
+  if(tr.length>=4){const h=Math.floor(tr.length/2),a=tr.slice(0,h),b=tr.slice(h),avg=x=>x.reduce((s,y)=>s+y.score,0)/x.length,d=Math.round(avg(b)-avg(a));
+    trend=d>=3?` Up ${d} points lately.`:d<=-3?' A few off nights lately. It happens.':' Holding steady.';}
+  card.innerHTML=`<p class="v-kicker">Your voice</p><h4>${esc(v.where)}, ${esc(v.wide)}</h4>${pianoSVG(rg.low,rg.high)}
+    <p class="v-sub">${noteName(rg.low)} to ${noteName(rg.high)}, from your last ${rg.takes} ${rg.takes===1?'take':'takes'}.${trend}</p>`;
+}
+const tick=(r,fmtD,fmtM)=>{const s=SONG_BY_ID[r.song_id],d=new Date(r.created_at);return `<li class="take ticket" data-id="${r.id}" style="--c:${s?s.color:'#9b8aff'}">
+  <button class="take-open" data-path="${esc(r.audio_path)}" data-song="${esc(r.song_id)}" aria-label="Play your take of ${esc(r.song_title)} from ${fmtM.format(d)} ${fmtD.format(d)}">
+    <span class="tk-stub" aria-hidden="true"><b>${fmtD.format(d)}</b><small>${fmtM.format(d)}</small></span>
+    <span class="tk-main"><span class="take-title">${esc(r.song_title)}</span><span class="take-meta">${r.score!=null?esc(crowdFor(r.score))+' · '+r.score+'%':'Saved take'}</span></span>
+    <span class="tk-play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6.5v11l9-5.5z"/></svg></span></button>
+  <button class="take-del" data-path="${esc(r.audio_path)}" aria-label="Delete this take of ${esc(r.song_title)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></li>`;};
 export async function openMine(){
   stopMix();show('mine');
   const name=S.user?(S.user.user_metadata&&(S.user.user_metadata.full_name||S.user.user_metadata.name)||String(S.user.email||'You').split('@')[0]):'You';
   $('meName').textContent=name.split(' ')[0];
   const since=S.user&&S.user.created_at?new Intl.DateTimeFormat(undefined,{month:'short',year:'numeric'}).format(new Date(S.user.created_at)):'';
-  $('meSub').textContent=GENRES[myGenre()].name+(since?' · since '+since:'');
-  const top=+pref('top','0');$('stTop').textContent=top?noteName(top):'–';
-  const b=Object.values(bests());$('stBest').textContent=b.length?Math.max(...b)+'%':'–';
-  $('stTakes').textContent=pref('sung','0');
+  const setSub=(extra)=>{$('meSub').textContent=[GENRES[myGenre()].name,extra||(since?'since '+since:'')].filter(Boolean).join(' · ');};setSub();
   $('signOut').textContent=S.user?'Sign out':'Sign in to keep your takes';$('signOut').hidden=!S.sb;
-  $('shareSet').hidden=!S.user;
+  $('shareSet').hidden=true;
+  const b=Object.values(bests());$('stBest').textContent=b.length?Math.max(...b)+'%':'–';
+  $('stNights').textContent='0';$('stSongs').textContent='0';
+  loadPerformances().then(rows=>{if(!$('mine').classList.contains('on'))return;
+    paintVoice(rows);const n=nights(rows),best=bestPerSong(rows);
+    $('stNights').textContent=String(n.count);$('stSongs').textContent=String(new Set(rows.map(r=>r.song_id)).size);
+    if(best.length){const cur=parseInt($('stBest').textContent)||0;$('stBest').textContent=Math.max(cur,best[0].score,...b)+'%';}
+    if(n.streak>=2)setSub(`${n.streak} nights in a row`);
+  });
   const list=$('takes');
-  if(!S.user){list.innerHTML='<li class="empty">Sign in and the takes you save will live here.</li>';return;}
-  list.innerHTML='<li class="empty">Loading your takes</li>';
+  if(!S.user){list.innerHTML='<li class="empty">Sign in and the takes you save become tickets here, ready to play back.</li>';return;}
+  list.innerHTML='<li class="empty">Loading your tickets</li>';
   const {data,error}=await S.sb.from('takes').select('*').order('created_at',{ascending:false});
   if(error){list.innerHTML='<li class="empty">Couldn’t load your takes. Check your connection and try again.</li>';return;}
-  mineTakes=data;$('stTakes').textContent=String(Math.max(data.length,+pref('sung','0')));
-  const sb2=data.map(r=>r.score).filter(x=>x!=null);if(sb2.length)$('stBest').textContent=Math.max(...sb2,...b)+'%';
-  if(!data.length){list.innerHTML='<li class="empty">No saved takes yet. Sing a song, then tap Save this take.</li>';return;}
-  const fmt=new Intl.DateTimeFormat(undefined,{month:'short',day:'numeric'});
-  list.innerHTML=data.map(r=>{const s=SONG_BY_ID[r.song_id];return `<li class="take" data-id="${r.id}">
-    <button class="take-open" data-path="${esc(r.audio_path)}" data-song="${esc(r.song_id)}"><span class="take-dot" style="background:${s?s.color:'#1d1631'}"></span>
-    <span class="take-main"><span class="take-title">${esc(r.song_title)}</span><span class="take-meta">${fmt.format(new Date(r.created_at))}</span></span><span class="take-score">${r.score??'–'}%</span></button>
-    <button class="take-del" data-path="${esc(r.audio_path)}" aria-label="Delete this take of ${esc(r.song_title)}">Delete</button></li>`;}).join('');
+  mineTakes=data;$('shareSet').hidden=!data.length;
+  const ts=data.map(r=>r.score).filter(x=>x!=null);if(ts.length){const cur=parseInt($('stBest').textContent)||0;$('stBest').textContent=Math.max(cur,...ts)+'%';}
+  if(!data.length){list.innerHTML='<li class="empty">No tickets yet. After a song, tap Save this take to keep it here.</li>';return;}
+  const fmtD=new Intl.DateTimeFormat(undefined,{day:'numeric'}),fmtM=new Intl.DateTimeFormat(undefined,{month:'short'});
+  list.innerHTML=data.map(r=>tick(r,fmtD,fmtM)).join('');
 }
 let mineTakes=[];
 $('shareSet').onclick=async()=>{
@@ -161,6 +195,6 @@ $('mineBack').onclick=()=>openPicker();
 $('signOut').onclick=async()=>{if(!S.user){authFor('takes');return;}await S.sb.auth.signOut();S.user=null;paintAuth();openMine();toast('Signed out');};
 $('scrim').addEventListener('click',closeAuth);
 if(S.sb){
-  S.sb.auth.onAuthStateChange((ev,session)=>{const was=S.user;S.user=session?session.user:null;paintAuth();if(S.user&&!was){const open=$('authSheet').classList.contains('on');closeAuth();if(open)toast('You’re signed in');flushPending();}});
+  S.sb.auth.onAuthStateChange((ev,session)=>{const was=S.user;S.user=session?session.user:null;paintAuth();if(S.user&&!was){const open=$('authSheet').classList.contains('on');closeAuth();if(open)toast('You’re signed in');flushPending();flushPerformances();}});
 }
 
