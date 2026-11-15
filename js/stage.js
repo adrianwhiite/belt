@@ -309,6 +309,7 @@ function loop(){
     if(st&&st.v>=3){const r=st.h/st.v,gi=r>=.8?0:r>=.55?1:r>=.3?2:-1;if(gi>=0)S.run.pop={g:gi,t0:performance.now()};}
   }
   const lift=cur?Math.max(0,Math.min(1,(cur.midi-song.minM)/Math.max(1,song.maxM-song.minM))):0;
+  S.run.lvl=lvl;
   poseBelter(rider(),pm!=null?Math.min(1,.25+lvl*12):0,lift,performance.now());
   drawLane(song,t,lvl);
   if(t>song.endT){finish();return;}

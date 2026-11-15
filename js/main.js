@@ -11,6 +11,7 @@
 //   ai         the belt-ai server function (separation, word timing)
 //   nav        challenge links and the back button
 //   modes      ways to play: the home screen's buttons, and hooks for each mode
+//   party      sing with friends, each on your own phone: the live room, turns and scoreboard
 //   profile    your singing stats over time
 //   toons      singers drawn in code, so mouths and faces move smoothly
 //   state      values several parts change (S.current, S.run, S.last, S.user...)
@@ -26,6 +27,7 @@ import './own-setup.js';
 import './ai.js';
 import './nav.js';
 import './modes.js';
+import './party.js';
 import {S} from './state.js';
 import {$} from './util.js';
 import {SONGS} from './songs.js';

@@ -5,7 +5,8 @@
 //   - each singer is built on a different shape (narrow, wide, round, tall...) so the
 //     silhouette alone tells you who it is
 //   - each has their own eyes and their own mouth, so they don't sing the same way
-// Coordinates fit the Belter frame (120 x 140); the head sits inside x 16-104, y 0-96 for round badges.
+// Coordinates fit the Belter frame (120 x 140). Round badges (data-bust="head") use viewBox "4 -2 112 112":
+// head and shoulders without the mic, with the face in the middle of the circle.
 
 const INK='#1d1631',PAPER='#fbf9ff',PINK='#ff5d8f',MINT='#3ddc97',GOLD='#ffc23d',SKY='#4cc9f0';
 const f=n=>(+n).toFixed(1);
@@ -26,7 +27,7 @@ export const CHARS={
   // Vex: narrow and sharp. Half-shut eyes, flat little mouth; sings like she's above it all.
   vex:{tilt:-4,bob:.5,
     draw:(id,head)=>{const sk='#f3dfd3',sh='#dcc1b3',hr='#241a3d',lid='#7a5fa8';return `
-    ${head?'':`<g class="body"><path d="M40 114 C42 100 78 100 80 114 Z" fill="#17112b"/><path d="M26 141 C27 123 37 112 50 109 L70 109 C83 112 93 123 94 141 Z" fill="${hr}"/>
+    ${`<g class="body"><path d="M40 114 C42 100 78 100 80 114 Z" fill="#17112b"/><path d="M26 141 C27 123 37 112 50 109 L70 109 C83 112 93 123 94 141 Z" fill="${hr}"/>
       <path d="M55 110 L54 124 M65 110 L66 124" stroke="${MINT}" stroke-width="2" stroke-linecap="round"/>
       <g transform="translate(77 127)"><path d="M0 5 C-7 0 -6.5 -5.5 -3 -5.5 C-1.4 -5.5 0 -4.4 0 -3 C0 -4.4 1.4 -5.5 3 -5.5 C6.5 -5.5 7 0 0 5 Z" fill="${PINK}"/><path d="M0 -3 L-1.6 -.6 L1.2 1 L-.4 4" stroke="${hr}" stroke-width="1.2" fill="none"/></g></g>`}
     <g class="hd">
@@ -48,7 +49,7 @@ export const CHARS={
   // Big Lou: wide and square. Tiny eyes, giant moustache, and a mouth that opens like a garage door.
   lou:{tilt:2,bob:1.6,
     draw:(id,head)=>{const sk='#eaa77a',sh='#d48c5e',hr='#2a2026';return `
-    ${head?'':`<g class="body"><path d="M-2 141 C0 118 16 104 42 101 L78 101 C104 104 120 118 122 141 Z" fill="#8e2440"/><path d="M49 101 L60 126 L71 101 Z" fill="${PAPER}"/>
+    ${`<g class="body"><path d="M-2 141 C0 118 16 104 42 101 L78 101 C104 104 120 118 122 141 Z" fill="#8e2440"/><path d="M49 101 L60 126 L71 101 Z" fill="${PAPER}"/>
       <path d="M42 101 L49 101 L60 126 L52 141 L34 141 C40 128 41 114 42 101 Z M78 101 L71 101 L60 126 L68 141 L86 141 C80 128 79 114 78 101 Z" fill="#6d1730"/>
       <path d="M50 104 L60 109 L70 104 L70 114 L60 109 L50 114 Z" fill="${GOLD}"/><circle cx="60" cy="109" r="2.6" fill="#e09a12"/><path d="M80 121 L85 115 L90 121 Z" fill="${PINK}"/></g>`}
     <g class="hd">
@@ -68,7 +69,7 @@ export const CHARS={
   // Moxie: a raccoon DJ. Wide head with cheek tufts, masked eyes, and little fangs when he lets rip.
   moxie:{tilt:0,bob:1.2,
     draw:(id,head)=>{const fur='#8f8a9c',dk='#2b2733';return `
-    ${head?'':`<g class="body"><path d="M32 113 C32 99 88 99 88 113 Z" fill="#e06d1f"/><path d="M16 141 C18 124 28 113 43 109 L77 109 C92 113 102 124 104 141 Z" fill="#ff8a3d"/>
+    ${`<g class="body"><path d="M32 113 C32 99 88 99 88 113 Z" fill="#e06d1f"/><path d="M16 141 C18 124 28 113 43 109 L77 109 C92 113 102 124 104 141 Z" fill="#ff8a3d"/>
       <path d="M52 110 V123 M68 110 V123" stroke="${PAPER}" stroke-width="2" stroke-linecap="round"/><path d="M44 130 H76 L74 141 H46 Z" fill="#e06d1f"/></g>`}
     <g class="hd">
       <path d="M36 36 L27 11 L50 25 Z M84 36 L93 11 L70 25 Z" fill="${fur}"/><path d="M36 30 L32 18 L43 25 Z M84 30 L88 18 L77 25 Z" fill="#ff9fb8"/>
@@ -88,7 +89,7 @@ export const CHARS={
   // Dot: small and round. Giant glasses, giant bun, and the biggest voice in the room.
   dot:{tilt:0,bob:2.2,
     draw:(id,head)=>{const sk='#7a4b33',sh='#633a26',hr='#ddd6ee';return `
-    ${head?'':`<g class="body"><path d="M30 141 C31 126 39 116 50 113 L70 113 C81 116 89 126 90 141 Z" fill="${MINT}"/><path d="M56 113 L60 141 L64 113 Z" fill="#25b87a"/>
+    ${`<g class="body"><path d="M30 141 C31 126 39 116 50 113 L70 113 C81 116 89 126 90 141 Z" fill="${MINT}"/><path d="M56 113 L60 141 L64 113 Z" fill="#25b87a"/>
       ${[[49,112],[54,114.6],[60,115.6],[66,114.6],[71,112]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="2.3" fill="${PAPER}"/>`).join('')}</g>`}
     <g class="hd">
       <rect x="55" y="88" width="10" height="26" fill="${sh}"/>
@@ -107,7 +108,7 @@ export const CHARS={
   // Rio: the pop star. Two big puffs, star shades that never come off, and a full-teeth grin.
   rio:{tilt:3,bob:1.4,
     draw:(id,head)=>{const sk='#c68a5e',sh='#ad7248',hr='#4a2378';const sp=(x,y,s)=>`<path transform="translate(${x} ${y}) scale(${s})" d="M0 -4 L1 -1 L4 0 L1 1 L0 4 L-1 1 L-4 0 L-1 -1 Z" fill="#fff"/>`;return `
-    ${head?'':`<g class="body"><path d="M20 141 C22 124 32 113 46 110 L74 110 C88 113 98 124 100 141 Z" fill="${PINK}"/><path d="M54 109 L60 122 L66 109 Z" fill="${INK}"/>
+    ${`<g class="body"><path d="M20 141 C22 124 32 113 46 110 L74 110 C88 113 98 124 100 141 Z" fill="${PINK}"/><path d="M54 109 L60 122 L66 109 Z" fill="${INK}"/>
       <path d="M46 110 L54 109 L60 122 L50 134 Z M74 110 L66 109 L60 122 L70 134 Z" fill="${GOLD}"/>${sp(31,129,1)}${sp(88,124,.8)}${sp(80,136,.6)}</g>`}
     <g class="hd">
       <circle cx="33" cy="30" r="18" fill="${hr}"/><circle cx="87" cy="30" r="18" fill="${hr}"/><circle cx="27" cy="23" r="5" fill="#6a3aa6"/><circle cx="81" cy="23" r="5" fill="#6a3aa6"/>
@@ -129,7 +130,7 @@ export const CHARS={
   // Buck: tall and long. Hat down low, beard up high, and a warm round mouth somewhere in the middle.
   buck:{tilt:-2,bob:1,
     draw:(id,head)=>{const sk='#f2c4a0',sh='#dfa67e',bd='#d9662b',bd2='#b94f1c',hat='#f4e6c8';return `
-    ${head?'':`<g class="body"><path d="M16 141 C18 123 30 112 46 109 L74 109 C90 112 102 123 104 141 Z" fill="#4c8fd6"/><path d="M60 122 V141" stroke="#3a74b8" stroke-width="2"/><rect x="74" y="122" width="13" height="10" rx="2" fill="#3a74b8"/>
+    ${`<g class="body"><path d="M16 141 C18 123 30 112 46 109 L74 109 C90 112 102 123 104 141 Z" fill="#4c8fd6"/><path d="M60 122 V141" stroke="#3a74b8" stroke-width="2"/><rect x="74" y="122" width="13" height="10" rx="2" fill="#3a74b8"/>
       <path d="M43 108 C50 114 70 114 77 108 L73 118 L60 127 L47 118 Z" fill="#e63950"/>${[[52,114],[60,119],[68,114],[60,112]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="1.1" fill="${PAPER}"/>`).join('')}</g>`}
     <g class="hd">
       <rect x="53" y="88" width="14" height="22" fill="${sh}"/><circle cx="38" cy="62" r="5" fill="${sk}"/><circle cx="82" cy="62" r="5" fill="${sk}"/>

@@ -1,4 +1,5 @@
 import {S} from './state.js';
+import {inParty,openParty,partyBack} from './party.js';
 import {$} from './util.js';
 import {show} from './audio.js';
 import {openPicker,paintAuth,paintTonight,renderChips} from './picker.js';
@@ -35,7 +36,8 @@ function goBack(){
   if(on==='sing')$('quit').click();
   else if(on==='result'){stopMix();show('pick');}
   else if(on==='mine')openPicker();
-  else if(on==='pick'){show('home');paintTonight();}
+  else if(on==='party')partyBack();
+  else if(on==='pick'){if(inParty())openParty();else{show('home');paintTonight();}}
 }
 window.addEventListener('popstate',()=>{if(skipPop){skipPop=false;return;}guard=false;goBack();syncGuard();});
 {const mo=new MutationObserver(()=>queueMicrotask(syncGuard));document.querySelectorAll('.screen,.sheet').forEach(el=>mo.observe(el,{attributes:true,attributeFilter:['class']}));}

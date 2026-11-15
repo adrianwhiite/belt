@@ -1,7 +1,7 @@
 """Run every test: python3 tests/run.py   (or name some: python3 tests/run.py stage share)"""
 import subprocess, sys, os, time
 from common import serve, HERE
-TESTS=['screens','stage','share','timing','flow']
+TESTS=['screens','stage','share','timing','flow','party']
 pick=[t for t in sys.argv[1:]] or TESTS
 srv=serve();bad=[]
 if subprocess.run([sys.executable,os.path.join(HERE,'..','tools','stamp.py'),'--check']).returncode:bad.append('stamps')

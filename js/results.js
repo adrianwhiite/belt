@@ -19,7 +19,8 @@ const FUN=['That was a whole moment','Encore!','Main character energy','That one
 const coachPref=()=>{try{return localStorage.getItem('belt.coach')==='on';}catch(e){return false;}};
 const setCoachPref=v=>{try{localStorage.setItem('belt.coach',v?'on':'off');}catch(e){}};
 export function showResults(){
-  try{const m=currentMode();if(m.onResult&&S.last)m.onResult(S.last);}catch(e){console.warn('belt: mode',e);}
+  // a mode can take over what happens after a song (Party shows the room's scoreboard instead of this page)
+  try{const m=currentMode();if(m.onResult&&S.last&&m.onResult(S.last)===true)return;}catch(e){console.warn('belt: mode',e);}
   const {song,sc}=S.last;
   $('resSong').textContent=song.title;
   const quiet=sc.cover<.15;
