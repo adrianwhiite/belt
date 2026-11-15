@@ -38,13 +38,23 @@ async function aiSync(vfile,vb,id){
 // onTask is called as soon as the separation is done, before the parts are downloaded, so word timing can start right away.
 const SPLIT_READS=['mp3','wav','flac','aiff','aif','m4a','aac','ogg','oga','opus','mp4','m4v','mov'],MIME={mp3:'audio/mpeg',m4a:'audio/mp4',aac:'audio/aac',mp4:'video/mp4',m4v:'video/mp4',mov:'video/quicktime'};
 export async function aiSplit(file,buf,id,onTask){
-  const ext0=(file.name.split('.').pop()||'').toLowerCase(),wavBytes=buf.duration*32000*4;
-  const asIs=SPLIT_READS.includes(ext0)&&file.size<=Math.min(45e6,['mp3','wav','flac','aiff','aif'].includes(ext0)?45e6:wavBytes);
-  try{return await splitOnce(asIs?file:stereoWav(buf,32000),asIs?ext0:'wav',id,onTask);}
-  catch(e){ // the service couldn't read that format: send the plain soundtrack instead
-    if(!asIs||ext0==='wav'||/too long|Uploading|401|402|429/i.test(String(e&&e.message)))throw e;
-    console.warn('split retry as wav',e);return splitOnce(stereoWav(buf,32000),'wav',id,onTask);
+  // Try the smallest good-sounding upload first, and if storage turns it away for size, step down.
+  // A full-quality original goes first when it's small; then the soundtrack as WAV at falling quality
+  // (mono 22 kHz still separates the singer well and fits a 9-minute song in about 24 MB).
+  const ext0=(file.name.split('.').pop()||'').toLowerCase(),sec=buf.duration;
+  const tries=[];
+  if(SPLIT_READS.includes(ext0)&&file.size<=24e6)tries.push(()=>[file,ext0]);
+  for(const [rate,ch] of [[32000,2],[32000,1],[22050,1],[16000,1]])if(sec*rate*2*ch<=24e6||rate===16000)tries.push(()=>[soundtrackWav(buf,rate,ch),'wav']);
+  let last;
+  for(const t of tries){
+    const [blob,ext]=t();
+    try{return await splitOnce(blob,ext,id,onTask);}
+    catch(e){last=e;const m=String(e&&e.message);
+      if(/exceeded|too large|413|maximum allowed size/i.test(m)){console.warn('split: too big, trying smaller',blob.size);continue;}
+      if(ext!=='wav'&&!/too long|Uploading|401|402|429/i.test(m)){console.warn('split: format not read, trying wav',e);continue;}
+      throw e;}
   }
+  throw last;
 }
 async function splitOnce(blob,ext,id,onTask){
   const path=`${S.user.id}/split/${id}-${Date.now()}.${ext}`;
@@ -71,8 +81,8 @@ async function splitOnce(blob,ext,id,onTask){
   }finally{S.sb.storage.from('takes').remove([path]);}
 }
 // The soundtrack only, as a 16-bit stereo WAV at a modest rate; falls back to mono if it would be too big to store.
-function stereoWav(buf,rate){
-  const n=Math.floor(buf.length*rate/buf.sampleRate),ch=n*4>45e6?1:2,L=buf.getChannelData(0),R=buf.numberOfChannels>1?buf.getChannelData(1):L,k=buf.sampleRate/rate;
+function soundtrackWav(buf,rate,ch){
+  const n=Math.floor(buf.length*rate/buf.sampleRate),L=buf.getChannelData(0),R=buf.numberOfChannels>1?buf.getChannelData(1):L,k=buf.sampleRate/rate;
   const ab=new ArrayBuffer(44+n*2*ch),v=new DataView(ab),w=(o,t)=>{for(let i=0;i<t.length;i++)v.setUint8(o+i,t.charCodeAt(i));};
   w(0,'RIFF');v.setUint32(4,36+n*2*ch,true);w(8,'WAVE');w(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,ch,true);
   v.setUint32(24,rate,true);v.setUint32(28,rate*2*ch,true);v.setUint16(32,2*ch,true);v.setUint16(34,16,true);w(36,'data');v.setUint32(40,n*2*ch,true);

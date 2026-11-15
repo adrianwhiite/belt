@@ -336,7 +336,8 @@ $('pickBack').onclick=e=>wash(e.currentTarget,()=>{show('home');paintTonight();}
 // A challenge link (letsbelt.com/?c=song.score.name) opens Belt with that song up front and a score to beat.
 S.challenge=null;
 function tonightSong(){if(S.challenge)return S.challenge.song;const o=CATALOG.find(c=>c.song&&c.song.own);return o?o.song:SONG_BY_ID.jingle;}
-export function paintTonight(){const s=tonightSong();$('tonightTitle').textContent=s.title;$('tonightDot').style.setProperty('--c',s.color);
+// Home only shows this card when someone sent you a challenge link; otherwise the modes speak for themselves.
+export function paintTonight(){$('tonight').hidden=!S.challenge;const s=tonightSong();$('tonightTitle').textContent=s.title;$('tonightDot').style.setProperty('--c',s.color);
   $('tonightLabel').textContent=S.challenge?`${S.challenge.by} scored ${S.challenge.score}%. Beat it?`:'Tonight’s pick';}
 $('tonight').onclick=e=>{const s=tonightSong();wash(e.currentTarget,()=>openPicker(CATALOG.find(c=>c.song===s)));setTimeout(()=>openSheet(s),reduceMotion?0:420);};
 $('homeMe').onclick=()=>openMine();
