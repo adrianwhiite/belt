@@ -1,5 +1,5 @@
 import {S} from './state.js';
-import {buildChar,buildToon,poseChar,poseToon} from './toons.js';
+import {buildChar,poseChar} from './toons.js';
 import {$,esc,pref,reduceMotion,setPref} from './util.js';
 import {SONGS} from './songs.js';
 import {PV_LEN,cache,ctx,ensureCtx,pv,show} from './audio.js';
@@ -12,14 +12,11 @@ export const INK='#1d1631';
 // The older drawn Belters stay below only so a saved choice from before still maps to someone.
 export const GENRES={
   vex:{name:'Vex',label:'Emo rocker',char:'vex'},
-  lou:{name:'Big Lou',label:'Lounge singer',char:'lou'},
-  moxie:{name:'Moxie',label:'DJ',char:'moxie'},
-  juno:{name:'Juno',label:'Rock singer',toon:'juno'},
-  marco:{name:'Marco',label:'Rock singer',toon:'marco'},
-  priya:{name:'Priya',label:'Pop singer',toon:'priya'},
-  dre:{name:'Dre',label:'Rapper',toon:'dre'},
-  simone:{name:'Simone',label:'Soul singer',toon:'simone'},
-  june:{name:'June',label:'Country singer',toon:'june'},
+  lou:{name:'Big Lou',label:'Lounge legend',char:'lou'},
+  moxie:{name:'Moxie',label:'Raccoon DJ',char:'moxie'},
+  dot:{name:'Dot',label:'Tiny powerhouse',char:'dot'},
+  rio:{name:'Rio',label:'Pop star',char:'rio'},
+  buck:{name:'Buck',label:'Country crooner',char:'buck'},
   classic:{legacy:1,name:'Classic Belter',c:'#ffbf47',jk:'#3ddc97',hair:'fan',outfit:'v'},
   rocker:{legacy:1,name:'Rocker',c:'#a594ff',jk:'#1d1631',hair:'spikes',eyes:'shades',outfit:'leather'},
   jazz:{legacy:1,name:'Jazz',c:'#6fd3f2',jk:'#1d1631',hat:'fedora',outfit:'turtle'},
@@ -28,10 +25,10 @@ export const GENRES={
   soul:{legacy:1,name:'Soul',c:'#5fdcab',jk:'#ff5d8f',hair:'afro',outfit:'chain'}
 };
 let UID=0;
-const OLD_TO_CAST={classic:'marco',rocker:'juno',jazz:'marco',pop:'priya',country:'june',soul:'simone'};
+const OLD_TO_CAST={classic:'lou',rocker:'vex',jazz:'lou',pop:'rio',country:'buck',soul:'dot',juno:'vex',marco:'lou',priya:'rio',dre:'moxie',simone:'dot',june:'buck'};
 export const CAST_KEYS=Object.keys(GENRES).filter(k=>!GENRES[k].legacy);
 export function buildBelter(svg){
-  const pick=GENRES[svg.dataset.genre];if(pick&&pick.char)return buildChar(svg,pick.char);if(pick&&pick.toon)return buildToon(svg,pick.toon);
+  const pick=GENRES[svg.dataset.genre];if(pick&&pick.char)return buildChar(svg,pick.char);
   const id='b'+(UID++),G=GENRES[svg.dataset.genre||'classic']||GENRES.classic,c=G.c,jk=G.jk,bust=svg.dataset.bust==='head';
   const back=G.hair==='spikes'?`<path d="M31 44 L33 12 L44 30 L49 2 L58 27 L66 4 L72 29 L83 10 L89 44 Z" fill="${INK}"/>`:
     G.hair==='afro'?`<g fill="#2a1d24">${[[33,30,19],[47,17,19],[62,13,19],[77,18,19],[89,31,17],[24,48,15],[96,48,15]].map(([x,y,r])=>`<circle cx="${x}" cy="${y}" r="${r}"/>`).join('')}</g>`:
@@ -73,7 +70,7 @@ export function buildBelter(svg){
   poseBelter(b,0,0,0);svg._b=b;return b;
 }
 export function poseBelter(b,loud,lift,t){
-  if(!b)return;if(b.char)return poseChar(b,loud,lift,t);if(b.toon)return poseToon(b,loud,lift,t);b.sm+=(loud-b.sm)*.25;const L=b.sm;
+  if(!b)return;if(b.char)return poseChar(b,loud,lift,t);b.sm+=(loud-b.sm)*.25;const L=b.sm;
   const W=15+L*8,H=2.5+L*19,y0=75;
   const d=`M${60-W/2} ${y0} Q60 ${y0-1.5-L*1.5} ${60+W/2} ${y0} Q${60+W/2} ${y0+H} 60 ${y0+H} Q${60-W/2} ${y0+H} ${60-W/2} ${y0} Z`;
   b.mouth.setAttribute('d',d);b.mpath.setAttribute('d',d);
@@ -116,7 +113,6 @@ function idleFrame(t){
     bars.forEach((b,i)=>{const g=.42+.17*Math.sin(t/430+i*1.9)+.12*Math.sin(t/710+i*2.7)+.08*Math.sin(t/260+i*4.1)+.16*pulse*(.6+.4*Math.sin(i*1.7+t/2000));
       if(barKick[i]>0){barKick[i]*=.94;}const target=Math.max(g,barKick[i]);barH[i]+=(target-barH[i])*(barKick[i]>.3?.4:.16);const sc=Math.max(.12,Math.min(1,barH[i]));b.style.transform=`scaleY(${sc.toFixed(4)})`;b.style.setProperty('--s',sc.toFixed(3));});
   }
-  if(homeOn){poseBelter($('homeMe').querySelector('svg')._b,0,0,t);}
   if(mineOn)poseBelter($('meBig')._b,Math.max(0,Math.sin(t/300))*.35,0,t);
   if($('castSheet').classList.contains('on'))document.querySelectorAll('#cast svg').forEach((s,i)=>poseBelter(s._b,Math.max(0,Math.sin(t/260+i*1.3))*.8,Math.max(0,Math.sin(t/1300+i)),t));
   requestAnimationFrame(idleFrame);
