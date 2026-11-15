@@ -5,31 +5,25 @@
 
 const INK='#1d1631';
 export const TOONS={
-  juno:{skin:'#f6c9a8',shade:'#e8a984',hair:'#1e1a26',hi:'#3a3346',style:'bob',streak:'#9b6bff',iris:'#3b2a22',
-    top:'jacket',c1:'#22202b',c2:'#3b3846',tee:'#f04f7a',ear:'hoop'},
-  marco:{skin:'#e7b78f',shade:'#d39a70',hair:'#3a302c',hi:'#8d8580',style:'curly',iris:'#4a3426',beard:'#5b4a42',
-    top:'shirt',c1:'#4f74a8',c2:'#3d5f8f',tee:'#9aa7b8'},
-  priya:{skin:'#c98d66',shade:'#b07450',hair:'#1f1715',hi:'#43332e',style:'pony',iris:'#2e1d16',
-    top:'jacket',c1:'#b9a4ff',c2:'#ff9cc8',tee:'#1d1631',ear:'star'},
-  dre:{skin:'#8c5a3c',shade:'#744832',hair:'#1a1412',hi:'#33261f',style:'twists',iris:'#24160f',hat:'cap',hatC:'#ff5d8f',
-    top:'hoodie',c1:'#efe5d2',c2:'#d9ccb4',tee:'#efe5d2',chain:1,dark:1},
-  simone:{skin:'#6f4530',shade:'#5a3524',hair:'#20140f',hi:'#3a271d',style:'afro',iris:'#1e120c',
-    top:'wrap',c1:'#7b2f6b',c2:'#5e2253',tee:'#7b2f6b',ear:'pearl',dark:1},
-  june:{skin:'#f8d5bd',shade:'#eab597',hair:'#d9774a',hi:'#f0a070',style:'wavy',iris:'#3f6b4a',hat:'cowboy',hatC:'#c9925a',freckles:1,
-    top:'shirt',c1:'#6f8fc2',c2:'#5878ad',tee:'#ff8fa3'},
+  juno:{skin:'#f6c9a8',shade:'#e8a984',hair:'#1e1a26',hi:'#3a3346',style:'bob',streak:'#9b6bff',
+    top:'jacket',c1:'#ff4fa3',c2:'#d9358a',tee:'#1d1631',pat:'studs',bolt:1,shades:'star',shadeC:'#ffd23f',ear:'bolt'},
+  marco:{skin:'#e7b78f',shade:'#d39a70',hair:'#3a302c',hi:'#8d8580',style:'curly',beard:'#5b4a42',
+    top:'shirt',c1:'#ff8a3d',c2:'#e06d1f',tee:'#ffe08a',pat:'flowers',shades:'aviator',shadeC:'#3fd0ff'},
+  priya:{skin:'#c98d66',shade:'#b07450',hair:'#1f1715',hi:'#43332e',style:'pony',
+    top:'jacket',c1:'#b48cff',c2:'#ff7ac0',tee:'#1d1631',pat:'sparkle',shades:'heart',shadeC:'#ff5fa8',ear:'star'},
+  dre:{skin:'#8c5a3c',shade:'#744832',hair:'#1a1412',hi:'#33261f',style:'twists',hat:'cap',hatC:'#ffd23f',
+    top:'track',c1:'#25c99a',c2:'#fbf9ff',tee:'#1d1631',chain:1,phones:'#ff5d8f',dark:1},
+  simone:{skin:'#6f4530',shade:'#5a3524',hair:'#20140f',hi:'#3a271d',style:'afro',flower:'#ff5d8f',
+    top:'wrap',c1:'#8f3dff',c2:'#6d22d6',tee:'#8f3dff',pat:'sparkle',ear:'bighoop',dark:1},
+  june:{skin:'#f8d5bd',shade:'#eab597',hair:'#d9774a',hi:'#f0a070',style:'wavy',hat:'cowboy',hatC:'#ff8fc7',freckles:1,
+    top:'fringe',c1:'#2ec4dc',c2:'#1ea3b8',tee:'#fbf9ff'},
 };
 
 const FACE='M33 52 C33 30 45 21 60 21 C75 21 87 30 87 52 L87 66 C87 86 75 98 60 98 C45 98 33 86 33 66 Z';
-// an eye whose upper lid rests over the top of the iris, so it looks relaxed rather than staring
-function eye(cx,T,id,side){
-  const cy=62,sc=`M${cx-7.6} ${cy} C${cx-7.6} ${cy-6} ${cx-4} ${cy-7.4} ${cx} ${cy-7.4} C${cx+4} ${cy-7.4} ${cx+7.6} ${cy-6} ${cx+7.6} ${cy} C${cx+7.6} ${cy+5.6} ${cx+4.2} ${cy+8.2} ${cx} ${cy+8.2} C${cx-4.2} ${cy+8.2} ${cx-7.6} ${cy+5.6} ${cx-7.6} ${cy} Z`;
-  const flick=side<0?`M${cx-7.4} ${cy-2.6} L${cx-10.4} ${cy-5}`:`M${cx+7.4} ${cy-2.6} L${cx+10.4} ${cy-5}`;
-  return `<g class="eye"><clipPath id="${id}"><path d="${sc}"/></clipPath><path d="${sc}" fill="#fff"/>
-    <g clip-path="url(#${id})"><g class="pup"><circle cx="${cx+.6}" cy="${cy+.4}" r="5.6" fill="${T.iris}"/><circle cx="${cx+.6}" cy="${cy+.4}" r="3" fill="${INK}"/>
-      <circle cx="${cx+2.6}" cy="${cy-1.8}" r="1.8" fill="#fff"/><circle cx="${cx-1.4}" cy="${cy+2.6}" r=".9" fill="#fff" opacity=".8"/></g>
-      <path d="M${cx-9} ${cy-9} L${cx+9} ${cy-9} L${cx+9} ${cy-4.6} C${cx+4} ${cy-6.6} ${cx-4} ${cy-6.6} ${cx-9} ${cy-4.6} Z" fill="${INK}" opacity=".12"/></g>
-    <path d="M${cx-7.6} ${cy-1} C${cx-7} ${cy-6.4} ${cx-3.6} ${cy-7.6} ${cx} ${cy-7.6} C${cx+3.6} ${cy-7.6} ${cx+7} ${cy-6.4} ${cx+7.6} ${cy-1}" fill="none" stroke="${INK}" stroke-width="2.5" stroke-linecap="round"/>
-    <path d="${flick}" stroke="${INK}" stroke-width="2.1" stroke-linecap="round"/></g>`;
+// simple cartoon eyes: an egg-shaped white, a big plain pupil, one highlight
+function eye(cx){
+  const cy=62;return `<g class="eye"><path d="M${cx} ${cy-8.4} C${cx+5.2} ${cy-8.4} ${cx+6.4} ${cy-2} ${cx+6.4} ${cy+1.4} C${cx+6.4} ${cy+5.8} ${cx+3.6} ${cy+8.2} ${cx} ${cy+8.2} C${cx-3.6} ${cy+8.2} ${cx-6.4} ${cy+5.8} ${cx-6.4} ${cy+1.4} C${cx-6.4} ${cy-2} ${cx-5.2} ${cy-8.4} ${cx} ${cy-8.4} Z" fill="#fff"/>
+    <g class="pup"><ellipse cx="${cx}" cy="${cy+1.6}" rx="4" ry="5.2" fill="${INK}"/><circle cx="${cx+1.5}" cy="${cy-.6}" r="1.7" fill="#fff"/></g></g>`;
 }
 const HAIR={ // [behind the head, in front of the face]
   bob:T=>[`<path d="M29 50 C26 30 40 14 60 14 C82 14 95 29 92 52 C95 66 93 80 88 88 L80 78 L40 78 L32 88 C26 78 25 64 29 50 Z" fill="${T.hair}"/>`,
@@ -47,10 +41,22 @@ const HAIR={ // [behind the head, in front of the face]
     `<path d="M31 56 C29 40 40 30 52 30 C48 36 46 42 46 46 C42 47 36 50 31 56 Z M89 56 C91 40 80 30 68 30 C72 36 74 42 74 46 C78 47 84 50 89 56 Z" fill="${T.hair}"/><path d="M34 52 C36 46 40 42 44 40" stroke="${T.hi}" stroke-width="1.6" fill="none" stroke-linecap="round"/>`],
 };
 const HAT={
-  cap:T=>`<path d="M32 44 C32 26 45 17 60 17 C75 17 88 26 88 44 C80 40 70 38 60 38 C50 38 40 40 32 44 Z" fill="${T.hatC}"/><path d="M32 44 C40 40 50 38 60 38 C70 38 80 40 88 44 L88 47 C80 43 70 41 60 41 C50 41 40 43 32 47 Z" fill="${INK}" opacity=".25"/><circle cx="60" cy="18" r="2.2" fill="${INK}" opacity=".35"/><rect x="54" y="30" width="12" height="5" rx="2.5" fill="#fff" opacity=".9"/>`,
-  cowboy:T=>`<path d="M8 36 C24 46 96 46 112 36 C108 44 96 50 60 50 C24 50 12 44 8 36 Z" fill="${T.hatC}"/><path d="M34 40 C34 22 42 12 50 16 C54 12 66 12 70 16 C78 12 86 22 86 40 C72 44 48 44 34 40 Z" fill="${T.hatC}"/><path d="M34 36 C48 40 72 40 86 36 L86 40 C72 44 48 44 34 40 Z" fill="#7a4e2a"/><path d="M50 16 C54 22 66 22 70 16" stroke="#a87442" stroke-width="1.4" fill="none"/>`,
+  cap:T=>`<path d="M32 44 C32 26 45 17 60 17 C75 17 88 26 88 44 C80 40 70 38 60 38 C50 38 40 40 32 44 Z" fill="${T.hatC}"/><path d="M32 44 C40 40 50 38 60 38 C70 38 80 40 88 44 L88 47 C80 43 70 41 60 41 C50 41 40 43 32 47 Z" fill="${INK}" opacity=".25"/><circle cx="60" cy="18" r="2.2" fill="${INK}" opacity=".35"/><path transform="translate(60 29)" d="M0 -5 L1.5 -1.6 L5 -1.4 L2.3 1 L3.1 4.6 L0 2.8 L-3.1 4.6 L-2.3 1 L-5 -1.4 L-1.5 -1.6 Z" fill="#ff5d8f"/>`,
+  cowboy:T=>`<path d="M8 36 C24 46 96 46 112 36 C108 44 96 50 60 50 C24 50 12 44 8 36 Z" fill="${T.hatC}"/><path d="M34 40 C34 22 42 12 50 16 C54 12 66 12 70 16 C78 12 86 22 86 40 C72 44 48 44 34 40 Z" fill="${T.hatC}"/><path d="M34 36 C48 40 72 40 86 36 L86 40 C72 44 48 44 34 40 Z" fill="#fbf9ff"/>${[40,47,54,60,66,73,80].map(x=>`<circle cx="${x}" cy="${38.6+Math.abs(x-60)*.02}" r="1.1" fill="#7ad8ff"/>`).join('')}<path transform="translate(60 26)" d="M0 -5 L1.5 -1.6 L5 -1.4 L2.3 1 L3.1 4.6 L0 2.8 L-3.1 4.6 L-2.3 1 L-5 -1.4 L-1.5 -1.6 Z" fill="#ffd23f"/><path d="M50 16 C54 22 66 22 70 16" stroke="#a87442" stroke-width="1.4" fill="none"/>`,
 };
-const EAR={hoop:x=>`<circle cx="${x}" cy="74" r="5" fill="none" stroke="#e8c15a" stroke-width="1.6"/>`,
+const SHADES={ // sunglasses pushed up on the head
+  star:c=>{const st=x=>`<path transform="translate(${x} 33)" d="M0 -6.5 L1.9 -2 L6.6 -1.7 L3 1.4 L4.1 6 L0 3.6 L-4.1 6 L-3 1.4 L-6.6 -1.7 L-1.9 -2 Z" fill="${c}" stroke="${INK}" stroke-width="1.2" stroke-linejoin="round"/>`;return st(48)+st(72)+`<path d="M54 33 Q60 30 66 33" stroke="${INK}" stroke-width="1.4" fill="none"/>`;},
+  heart:c=>{const h=x=>`<path transform="translate(${x} 33)" d="M0 5 C-7 0 -7 -6 -3.4 -6 C-1.6 -6 0 -4.6 0 -3.2 C0 -4.6 1.6 -6 3.4 -6 C7 -6 7 0 0 5 Z" fill="${c}" stroke="${INK}" stroke-width="1.2"/>`;return h(48)+h(72)+`<path d="M54 32 Q60 30 66 32" stroke="${INK}" stroke-width="1.4" fill="none"/>`;},
+  aviator:c=>`<path d="M41 30 C41 28 54 28 55 30 C55 36 50 38 47 38 C43 38 41 34 41 30 Z M65 30 C66 28 79 28 79 30 C79 34 77 38 73 38 C70 38 65 36 65 30 Z" fill="${c}" stroke="#c9a54a" stroke-width="1.4"/><path d="M55 30 Q60 28 65 30" stroke="#c9a54a" stroke-width="1.4" fill="none"/><path d="M44 31 L48 31" stroke="#fff" stroke-width="1.2" stroke-linecap="round" opacity=".8"/>`,
+};
+const PAT={ // a print or some sparkle over the outfit
+  studs:()=>`<pattern id="ID" width="7" height="7" patternUnits="userSpaceOnUse"><circle cx="3.5" cy="3.5" r="1" fill="#e9e6f2"/></pattern>`,
+  sparkle:()=>`<pattern id="ID" width="9" height="9" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.1" fill="#fff" opacity=".85"/><circle cx="6.5" cy="6.5" r=".8" fill="#ffe37a"/></pattern>`,
+  flowers:()=>`<pattern id="ID" width="14" height="14" patternUnits="userSpaceOnUse"><g transform="translate(5 5)" fill="#fff6c8"><circle cx="0" cy="-2.4" r="1.8"/><circle cx="2.3" cy="-.7" r="1.8"/><circle cx="1.4" cy="2" r="1.8"/><circle cx="-1.4" cy="2" r="1.8"/><circle cx="-2.3" cy="-.7" r="1.8"/><circle r="1.3" fill="#ff5d8f"/></g><circle cx="11.5" cy="11.5" r="1.2" fill="#2fd3a0"/></pattern>`,
+};
+const EAR={bolt:x=>`<path transform="translate(${x} 72)" d="M1 -4 L-2.4 1 L0 1 L-1 5 L2.6 -.6 L.2 -.6 Z" fill="#ffd23f"/>`,
+  bighoop:x=>`<circle cx="${x}" cy="76" r="6.5" fill="none" stroke="#f2c94c" stroke-width="2"/>`,
+  hoop:x=>`<circle cx="${x}" cy="74" r="5" fill="none" stroke="#e8c15a" stroke-width="1.6"/>`,
   star:x=>`<path transform="translate(${x} 74)" d="M0 -4.2 L1.2 -1.2 L4.2 -1 L1.9 1 L2.6 4 L0 2.4 L-2.6 4 L-1.9 1 L-4.2 -1 L-1.2 -1.2 Z" fill="#f2c94c"/>`,
   pearl:x=>`<circle cx="${x}" cy="72" r="2.4" fill="#fbf6ee"/>`};
 const TOP={
@@ -60,14 +66,23 @@ const TOP={
     <path d="M44 103 L60 116 L52 122 Z M76 103 L60 116 L68 122 Z" fill="${T.c2}"/><path d="M60 118 L60 141" stroke="${T.c2}" stroke-width="1.4"/><circle cx="60" cy="126" r="1.2" fill="#fff"/><circle cx="60" cy="134" r="1.2" fill="#fff"/>`,
   hoodie:T=>`<path d="M36 108 C36 96 84 96 84 108 L84 112 L36 112 Z" fill="${T.c2}"/><path d="M10 141 C11 120 22 109 40 106 L80 106 C98 109 109 120 110 141 Z" fill="${T.c1}"/>
     <path d="M52 108 L52 124 M68 108 L68 124" stroke="${T.c2}" stroke-width="1.6" stroke-linecap="round"/><path d="M40 128 L80 128 L78 141 L42 141 Z" fill="${T.c2}" opacity=".6"/>`,
+  track:T=>`<path d="M10 141 C11 120 22 109 40 105 L80 105 C98 109 109 120 110 141 Z" fill="${T.c1}"/><path d="M50 104 L60 112 L70 104 Z" fill="${T.tee}"/><path d="M60 112 L60 141" stroke="${T.c2}" stroke-width="1.6"/>
+    <path d="M16 141 C17 126 22 116 30 111 L34 113 C27 118 22 128 21 141 Z M104 141 C103 126 98 116 90 111 L86 113 C93 118 98 128 99 141 Z" fill="${T.c2}"/>`,
+  fringe:T=>`<path d="M10 141 C11 120 22 109 40 105 L80 105 C98 109 109 120 110 141 Z" fill="${T.c1}"/><path d="M47 105 L60 124 L73 105 Z" fill="${T.tee}"/>
+    <path d="M40 105 L50 104 L60 124 L52 141 L40 141 C42 128 40 116 40 105 Z M80 105 L70 104 L60 124 L68 141 L80 141 C78 128 80 116 80 105 Z" fill="${T.c2}"/>
+    <path d="M18 120 L16 132 M22 117 L20 130 M26 114 L25 128 M102 120 L104 132 M98 117 L100 130 M94 114 L95 128" stroke="#fbf9ff" stroke-width="1.6" stroke-linecap="round"/>`,
   wrap:T=>`<path d="M10 141 C11 120 22 109 40 105 L80 105 C98 109 109 120 110 141 Z" fill="${T.c1}"/><path d="M46 104 L60 122 L74 104 Z" fill="${T.skin}"/><path d="M46 104 L60 122 L70 141 L56 141 L52 120 Z" fill="${T.c2}"/>`,
 };
 
 export function buildToon(svg,key){
-  const T=TOONS[key]||TOONS.juno,head=svg.dataset.bust==='head',id='t'+Math.random().toString(36).slice(2,8),[hb,hf]=HAIR[T.style](T),blush=T.dark?.22:.35;
+  const T=TOONS[key]||TOONS.juno,head=svg.dataset.bust==='head',id='t'+Math.random().toString(36).slice(2,8),[hb,hf]=HAIR[T.style](T),blush=T.dark?.3:.45;
   svg.innerHTML=`
   <defs><clipPath id="${id}m"><path class="tm"/></clipPath><clipPath id="${id}f"><path d="${FACE}"/></clipPath></defs>
-  ${head?'':`<g class="body">${TOP[T.top](T)}${T.chain?'<path d="M47 106 C50 118 70 118 73 106" fill="none" stroke="#e8c15a" stroke-width="2"/>':''}</g>`}
+  ${T.pat?`<defs>${PAT[T.pat]().replace('ID',id+'p')}</defs>`:''}
+  ${head?'':`<g class="body">${TOP[T.top](T)}${T.pat?`<path d="M10 141 C11 120 22 109 40 105 L48 105 L60 124 L72 105 L80 105 C98 109 109 120 110 141 Z" fill="url(#${id}p)"/>`:''}
+    ${T.bolt?'<path d="M62 114 L56 124 L60 124 L57 133 L65 121 L61 121 Z" fill="#ffd23f"/>':''}
+    ${T.chain?'<path d="M47 106 C50 118 70 118 73 106" fill="none" stroke="#e8c15a" stroke-width="2"/>':''}
+    ${T.phones?`<path d="M40 108 C42 116 78 116 80 108" fill="none" stroke="${T.phones}" stroke-width="3" stroke-linecap="round"/><ellipse cx="39" cy="107" rx="5" ry="6" fill="${T.phones}"/><ellipse cx="81" cy="107" rx="5" ry="6" fill="${T.phones}"/><ellipse cx="39" cy="107" rx="2.4" ry="3.4" fill="${INK}" opacity=".35"/><ellipse cx="81" cy="107" rx="2.4" ry="3.4" fill="${INK}" opacity=".35"/>`:''}</g>`}
   <g class="hd">
     <path d="M52 92 L68 92 L68 108 C64 111 56 111 52 108 Z" fill="${T.skin}"/>
     <path d="M52 96 C56 100 64 100 68 96 L68 102 C64 105 56 105 52 102 Z" fill="${T.shade}"/>
@@ -77,18 +92,19 @@ export function buildToon(svg,key){
     <path d="${FACE}" fill="${T.skin}"/>
     <g clip-path="url(#${id}f)"><path d="M72 21 C84 26 90 40 88 62 C87 84 76 97 62 99 C74 90 80 76 80 60 C80 42 77 30 72 21 Z" fill="${T.shade}" opacity=".7"/>
       ${T.beard?`<path d="M33 66 C36 86 46 98 60 98 C74 98 84 86 87 66 C84 76 78 84 70 86 C66 83 54 83 50 86 C42 84 36 76 33 66 Z" fill="${T.beard}" opacity=".55"/>`:''}</g>
-    <ellipse cx="44" cy="75" rx="6" ry="3.6" fill="#ff8f8f" opacity="${blush}"/><ellipse cx="76" cy="75" rx="6" ry="3.6" fill="#ff8f8f" opacity="${blush}"/>
+    <circle cx="43" cy="74" r="4.6" fill="#ff7f9e" opacity="${blush}"/><circle cx="77" cy="74" r="4.6" fill="#ff7f9e" opacity="${blush}"/>
     ${T.freckles?[[42,71],[45,73],[48,71],[72,71],[75,73],[78,71]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r=".8" fill="${T.shade}"/>`).join(''):''}
-    <g class="eyes">${eye(47,T,id+'l',-1)}${eye(73,T,id+'r',1)}</g>
-    <path class="shut" d="M40 63 Q47 68 54.5 63 M65.5 63 Q73 68 80 63" fill="none" stroke="${INK}" stroke-width="2.6" stroke-linecap="round" opacity="0"/>
+    <g class="eyes">${eye(47)}${eye(73)}</g>
+    <path class="shut" d="M41 65 Q47 58.5 53 65 M67 65 Q73 58.5 79 65" fill="none" stroke="${INK}" stroke-width="2.6" stroke-linecap="round" opacity="0"/>
     <path class="cheek" d="M41 69 Q47 66.5 53 69 M67 69 Q73 66.5 79 69" fill="none" stroke="${T.shade}" stroke-width="1.6" stroke-linecap="round" opacity="0"/>
-    <path class="brow" data-s="-1" d="M39 47 Q46 42.5 54 45.5" fill="none" stroke="${T.style==='wavy'?T.shade:T.hair}" stroke-width="3.6" stroke-linecap="round"/>
-    <path class="brow" data-s="1" d="M66 45.5 Q74 42.5 81 47" fill="none" stroke="${T.style==='wavy'?T.shade:T.hair}" stroke-width="3.6" stroke-linecap="round"/>
+    <path class="brow" data-s="-1" d="M39 47 Q46 42.5 54 45.5" fill="none" stroke="${T.style==='wavy'?T.shade:T.hair}" stroke-width="3.2" stroke-linecap="round"/>
+    <path class="brow" data-s="1" d="M66 45.5 Q74 42.5 81 47" fill="none" stroke="${T.style==='wavy'?T.shade:T.hair}" stroke-width="3.2" stroke-linecap="round"/>
     <path d="M58.5 70 Q60 75 62.5 73.6" fill="none" stroke="${T.shade}" stroke-width="2.2" stroke-linecap="round"/>
     <path class="mouth" fill="#7a2843"/>
     <g clip-path="url(#${id}m)"><ellipse class="tongue" cx="60" fill="#ff7f97"/><rect class="teeth" fill="#fff" rx="1.5"/></g>
     <path class="smile" fill="#7a2843"/>
-    ${hf}${T.hat?HAT[T.hat](T):''}
+    ${hf}${T.hat?HAT[T.hat](T):''}${T.shades?SHADES[T.shades](T.shadeC):''}
+    ${T.flower?`<g transform="translate(84 36)">${[0,72,144,216,288].map(a=>`<circle cx="${(Math.cos(a*Math.PI/180)*4.4).toFixed(1)}" cy="${(Math.sin(a*Math.PI/180)*4.4).toFixed(1)}" r="3.6" fill="${T.flower}"/>`).join('')}<circle r="2.6" fill="#ffd23f"/></g>`:''}
   </g>
   ${head?'':`<g class="arm">
     <path d="M26 141 C27 132 33 125 43 121 C47 120 52 122 54 126 C50 131 46 136 44 141 Z" fill="${T.c1}"/>
