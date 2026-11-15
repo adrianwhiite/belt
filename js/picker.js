@@ -74,9 +74,8 @@ export function buildBelter(svg){
 }
 export function poseBelter(b,loud,lift,t){
   if(!b)return;b.sm+=(loud-b.sm)*.25;const L=b.sm;
-  if(b.photo){ // swap to the singing picture as you get louder, eyes closed on the big notes; a gentle sway on top
-    const f=L>.7?2:L>.22?1:0;if(f!==b.cur){b.frames[b.cur].style.opacity=0;b.frames[f].style.opacity=1;b.cur=f;}
-    const sway=Math.sin(t/900+b.seed);b.g.setAttribute('transform',`translate(0 ${(-lift*3-L*1.5+sway*.6).toFixed(2)}) rotate(${(-3*L+sway*1.1).toFixed(2)} 60 130)`);return;}
+  if(b.photo){ // picture singers hold still-faced and move with your voice: a sway, and a lift when you get loud
+    const sway=Math.sin(t/900+b.seed),k=1+L*.035;b.g.setAttribute('transform',`translate(0 ${(-lift*3-L*3+sway*.6).toFixed(2)}) rotate(${(-3*L+sway*1.1).toFixed(2)} 60 130) translate(60 130) scale(${k.toFixed(3)}) translate(-60 -130)`);return;}
   const W=15+L*8,H=2.5+L*19,y0=75;
   const d=`M${60-W/2} ${y0} Q60 ${y0-1.5-L*1.5} ${60+W/2} ${y0} Q${60+W/2} ${y0+H} 60 ${y0+H} Q${60-W/2} ${y0+H} ${60-W/2} ${y0} Z`;
   b.mouth.setAttribute('d',d);b.mpath.setAttribute('d',d);
