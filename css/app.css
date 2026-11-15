@@ -389,8 +389,10 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
 .tk-stub::after{content:"";position:absolute;right:-1px;top:8px;bottom:8px;border-right:2px dashed rgba(29,22,49,.28)}
 .ticket::before,.ticket::after{content:"";position:absolute;left:61px;width:14px;height:14px;border-radius:50%;background:var(--violet);z-index:1}
 .ticket::before{top:-7px}.ticket::after{bottom:-7px}
+.tk-stub{-webkit-mask:linear-gradient(#000,#000) 6px 0/100% 100% no-repeat,radial-gradient(circle at 0 50%,transparent 2.6px,#000 3px) 0 0/6px 9px repeat-y;mask:linear-gradient(#000,#000) 6px 0/100% 100% no-repeat,radial-gradient(circle at 0 50%,transparent 2.6px,#000 3px) 0 0/6px 9px repeat-y;border-radius:0}
 .tk-stub b{font-size:26px;font-weight:800;letter-spacing:-.04em;line-height:1;font-variant-numeric:tabular-nums}
 .tk-stub small{font-size:13px;font-weight:700;margin-top:2px}
+.tk-main .take-meta{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tk-main{flex:1;min-width:0;padding:14px 8px 14px 18px;display:flex;flex-direction:column;justify-content:center}
 .tk-play{flex:none;align-self:center;width:36px;height:36px;border-radius:50%;background:var(--ink);display:grid;place-items:center;margin-right:4px}
 .tk-play svg{width:16px;height:16px;fill:var(--paper);margin-left:2px}
@@ -445,6 +447,8 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
 
 .toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 24px);transform:translate(-50%,20px);background:var(--paper);color:var(--ink);font-weight:700;font-size:16px;padding:14px 20px;border-radius:99px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;box-shadow:0 8px 30px rgba(10,6,22,.35);max-width:calc(100% - 40px);text-align:center;z-index:5}
 .toast.on{opacity:1;transform:translate(-50%,0)}
+.toast.act{pointer-events:auto;display:flex;align-items:center;gap:16px;padding:8px 8px 8px 20px;white-space:nowrap;max-width:calc(100vw - 32px)}
+.toast button{font-weight:800;font-size:15px;background:var(--ink);color:var(--paper);border-radius:99px;padding:8px 14px}
 
 /* page wash: the next page grows out of the button you pressed */
 ::view-transition-old(root),::view-transition-new(root){animation:none;mix-blend-mode:normal}

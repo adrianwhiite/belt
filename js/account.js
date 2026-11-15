@@ -1,5 +1,5 @@
 import {S} from './state.js';
-import {bestPerSong,crowdFor,flushPerformances,loadPerformances,nights,rangeOf,scoreTrend,voiceLabel} from './profile.js';
+import {bestPerSong,flushPerformances,loadPerformances,nights,rangeOf,scoreTrend,voiceLabel} from './profile.js';
 import {$,esc,pref,reduceMotion,setPref} from './util.js';
 import {SONGS} from './songs.js';
 import {ctx,ensureCtx,show} from './audio.js';
@@ -12,7 +12,9 @@ const SB_URL='https://wksewqwujfrqmqliltbn.supabase.co',SB_KEY='sb_publishable_-
 S.sb=null;S.user=null;
 try{if(window.supabase)S.sb=window.supabase.createClient(SB_URL,SB_KEY);}catch(e){S.sb=null;}
 export const SONG_BY_ID=Object.fromEntries(SONGS.map(s=>[s.id,s]));
-export function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('on'),2600);}
+export function toast(msg,act){const t=$('toast');t.textContent=msg;t.classList.toggle('act',!!act);
+  if(act){const b=document.createElement('button');b.textContent=act.label;b.onclick=()=>{clearTimeout(toast.h);t.classList.remove('on','act');act.fn();};t.append(b);}
+  t.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>{t.classList.remove('on','act');},act?act.ms||5000:2600);}
 
 // Keep a take in this browser while Google sign-in leaves the page and comes back.
 const idb=()=>new Promise((res,rej)=>{const r=indexedDB.open('belt',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});
@@ -114,10 +116,12 @@ function paintVoice(rows){
   card.innerHTML=`<p class="v-kicker">Your voice</p><h4>${esc(v.where)}, ${esc(v.wide)}</h4>${pianoSVG(rg.low,rg.high)}
     <p class="v-sub">${noteName(rg.low)} to ${noteName(rg.high)}, from your last ${rg.takes} ${rg.takes===1?'take':'takes'}.${trend}</p>`;
 }
+const ago=d=>{const days=Math.round((new Date().setHours(0,0,0,0)-new Date(d).setHours(0,0,0,0))/864e5);
+  return days<=0?'Tonight':days===1?'Last night':days<7?days+' nights ago':days<14?'Last week':new Intl.DateTimeFormat(undefined,{month:'short',day:'numeric'}).format(d);};
 const tick=(r,fmtD,fmtM)=>{const s=SONG_BY_ID[r.song_id],d=new Date(r.created_at);return `<li class="take ticket" data-id="${r.id}" style="--c:${s?s.color:'#9b8aff'}">
-  <button class="take-open" data-path="${esc(r.audio_path)}" data-song="${esc(r.song_id)}" aria-label="Play your take of ${esc(r.song_title)} from ${fmtM.format(d)} ${fmtD.format(d)}">
+  <button class="take-open" data-path="${esc(r.audio_path)}" data-song="${esc(r.song_id)}" aria-label="Play your take of ${esc(r.song_title)} from your show on ${fmtM.format(d)} ${fmtD.format(d)}">
     <span class="tk-stub" aria-hidden="true"><b>${fmtD.format(d)}</b><small>${fmtM.format(d)}</small></span>
-    <span class="tk-main"><span class="take-title">${esc(r.song_title)}</span><span class="take-meta">${r.score!=null?esc(crowdFor(r.score))+' · '+r.score+'%':'Saved take'}</span></span>
+    <span class="tk-main"><span class="take-title">${esc(r.song_title)}</span><span class="take-meta">${esc(ago(d))}${r.score!=null?' · '+r.score+'%':''}</span></span>
     <span class="tk-play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6.5v11l9-5.5z"/></svg></span></button>
   <button class="take-del" data-path="${esc(r.audio_path)}" aria-label="Delete this take of ${esc(r.song_title)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></li>`;};
 export async function openMine(){
@@ -137,13 +141,13 @@ export async function openMine(){
     if(n.streak>=2)setSub(`${n.streak} nights in a row`);
   });
   const list=$('takes');
-  if(!S.user){list.innerHTML='<li class="empty">Sign in and the takes you save become tickets here, ready to play back.</li>';return;}
-  list.innerHTML='<li class="empty">Loading your tickets</li>';
+  if(!S.user){list.innerHTML='<li class="empty">Sign in and every take you save becomes a ticket stub from that night’s show, ready to play back.</li>';return;}
+  list.innerHTML='<li class="empty">Loading your past shows</li>';
   const {data,error}=await S.sb.from('takes').select('*').order('created_at',{ascending:false});
   if(error){list.innerHTML='<li class="empty">Couldn’t load your takes. Check your connection and try again.</li>';return;}
   mineTakes=data;$('shareSet').hidden=!data.length;
   const ts=data.map(r=>r.score).filter(x=>x!=null);if(ts.length){const cur=parseInt($('stBest').textContent)||0;$('stBest').textContent=Math.max(cur,...ts)+'%';}
-  if(!data.length){list.innerHTML='<li class="empty">No tickets yet. After a song, tap Save this take to keep it here.</li>';return;}
+  if(!data.length){list.innerHTML='<li class="empty">No past shows yet. After a song, tap Save this take to keep its ticket stub here.</li>';return;}
   const fmtD=new Intl.DateTimeFormat(undefined,{day:'numeric'}),fmtM=new Intl.DateTimeFormat(undefined,{month:'short'});
   list.innerHTML=data.map(r=>tick(r,fmtD,fmtM)).join('');
 }
@@ -180,12 +184,16 @@ async function openTake(path,songId){
 $('takes').onclick=async e=>{
   const o=e.target.closest('.take-open');if(o){openTake(o.dataset.path,o.dataset.song);return;}
   const d=e.target.closest('.take-del');if(!d)return;
-  if(!d.dataset.sure){d.dataset.sure='1';d.textContent='Really delete?';setTimeout(()=>{if(d.isConnected&&!d.disabled){delete d.dataset.sure;d.textContent='Delete';}},3500);return;}
-  const li=d.closest('.take');d.disabled=true;
-  await S.sb.storage.from('takes').remove([d.dataset.path]);
-  const {error}=await S.sb.from('takes').delete().eq('id',li.dataset.id);
-  if(error){d.disabled=false;toast('Couldn’t delete that take.');return;}
-  li.remove();if(!$('takes').children.length)$('takes').innerHTML='<li class="empty">No saved takes yet. Sing a song, then tap Save this take.</li>';
+  // Delete straight away, with a few seconds to undo; the take is only really removed once that passes.
+  const li=d.closest('.take'),next=li.nextSibling,list=$('takes');li.remove();
+  if(!list.querySelector('.take'))list.insertAdjacentHTML('beforeend','<li class="empty" data-tmp>No past shows yet. After a song, tap Save this take to keep it here.</li>');
+  let undone=false;
+  toast(`Deleted ${li.querySelector('.take-title').textContent}`,{label:'Undo',ms:5000,fn:()=>{undone=true;const e2=list.querySelector('[data-tmp]');if(e2)e2.remove();list.insertBefore(li,next&&next.isConnected?next:null);}});
+  setTimeout(async()=>{if(undone)return;
+    await S.sb.storage.from('takes').remove([d.dataset.path]);
+    const {error}=await S.sb.from('takes').delete().eq('id',li.dataset.id);
+    if(error){toast('Couldn’t delete that take. It’s back in your list.');const e2=list.querySelector('[data-tmp]');if(e2)e2.remove();list.prepend(li);}
+  },5200);
 };
 $('save').onclick=saveTake;
 $('google').onclick=signIn;
