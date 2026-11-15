@@ -166,11 +166,11 @@ export function ownFound(){
     segs.length?(ch?`Starts in ${keyName(segs[0].k)}, then changes key ${ch===1?'once':ch+' times'}`:`In ${keyName(segs[0].k)}`):'',
     ...((v&&v.ai&&v.ai.problems)||[]).slice(0,2).map(x=>'Heads up: '+x)];
   $('ownFacts').innerHTML=facts.filter(Boolean).map(x=>`<li>${esc(x)}</li>`).join('');
-  $('ownFine').textContent='Your song stays on this device. To separate the singer, it’s sent briefly to our audio partner, then deleted. Lyrics come from LRCLIB, for personal practice.';
+  $('ownFine').textContent='Your song stays on this device. To take out the vocals, it’s sent briefly to our audio partner, then deleted. Lyrics come from LRCLIB, for personal practice.';
   $('ownVocal').hidden=!!v||!!p.splitP;$('ownGo').hidden=!v;
   (v?$('ownGo'):$('ownWrong')).focus();
 }
-const OWN_STEPS=['Reading the label','Finding the words','Separating the singer from the band','Learning the melody','Syncing every word to the singer','Mic check'];
+const OWN_STEPS=['Reading the label','Finding the words','Taking out the vocals','Learning the melody','Syncing every word','Mic check'];
 function ownFail(i,msg,e){
   tick(i,'fail');$('ownWorkErr').hidden=false;$('ownWorkErr').textContent=msg;
   const d=$('ownWorkWhy');d.hidden=!e;d.textContent=e?'Details: '+String(e.message||e).slice(0,240):'';$('ownWorkClose').hidden=false;
@@ -183,7 +183,7 @@ function setupError(e){
   if(/not set in the function secrets/i.test(m))return 'A key is missing in Supabase. Check the function secrets.';
   if(/unknown action/i.test(m))return 'The Belt server function needs updating. Redeploy belt-ai in Supabase.';
   if(/invalid jwt|\(401\)/i.test(m))return 'The server didn’t accept your sign-in. Turn off Verify JWT for belt-ai, or sign in again.';
-  return 'Couldn’t separate the singer. The details below say where it stopped.';
+  return 'Couldn’t take out the vocals. The details below say where it stopped.';
 }
 // One file in: the song as you normally hear it. Out: backing track, melody, word-perfect lyrics.
 async function ingestOwn(file){

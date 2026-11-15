@@ -49,7 +49,7 @@ async function saveTake(){
 }
 export function authFor(kind){
   $('authTitle').textContent=kind==='own'?'Sign in to add your songs':kind==='hello'?'Sign in to Belt':'Keep your takes';
-  $('authSub').textContent=kind==='own'?'Belt uses your account to separate the singer from the band and sync every word.':kind==='hello'?'Save your takes and add your own songs. You can also just start singing.':'Sign in once and your saved takes will be here next time.';
+  $('authSub').textContent=kind==='own'?'Belt uses your account to take out the vocals and sync every word.':kind==='hello'?'Save your takes and add your own songs. You can also just start singing.':'Sign in once and your saved takes will be here next time.';
   openAuth();
 }
 function openAuth(){$('scrim').classList.add('on');$('authSheet').classList.add('on');$('google').focus();googleButton();}
