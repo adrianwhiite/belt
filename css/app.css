@@ -128,6 +128,10 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px so
 .disc{position:absolute;z-index:2;right:-76px;top:50%;width:184px;height:184px;margin-top:-92px;border-radius:50%;
   filter:drop-shadow(-10px 14px 18px rgba(29,22,49,.42));transition:transform .5s cubic-bezier(.22,1,.36,1),opacity .35s ease}
 .disc .rec{width:100%;height:100%;display:block}
+/* light catching the grooves: it stays put while the record turns underneath, like a real one */
+.disc .shine{position:absolute;inset:0;border-radius:50%;pointer-events:none;mix-blend-mode:screen;
+  background:conic-gradient(from 200deg,transparent 0deg,rgba(255,255,255,.16) 22deg,rgba(255,255,255,.04) 40deg,transparent 60deg,transparent 180deg,rgba(255,255,255,.12) 202deg,rgba(255,255,255,.03) 220deg,transparent 240deg);
+  -webkit-mask:radial-gradient(circle,transparent 27.5%,#000 28.5%,#000 48.5%,transparent 49.5%);mask:radial-gradient(circle,transparent 27.5%,#000 28.5%,#000 48.5%,transparent 49.5%)}
 .disc.on{transform:translateX(-12px)}
 .disc:active .rec{transform:scale(.97)}
 .disc[aria-disabled=true]{transform:translateX(130px) rotate(40deg);opacity:0;pointer-events:none}
@@ -137,9 +141,9 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px so
 .disc .pp{transition:transform .2s cubic-bezier(.22,1,.36,1),opacity .25s ease}
 .disc.playing .pp,.disc.wait .pp{opacity:0;transform:scale(.7)}
 .disc.playing:hover .pp,.disc.playing:focus-visible .pp{opacity:1;transform:none}
-.disc .lt{font:800 6.2px/1 var(--display);letter-spacing:.8px;text-transform:uppercase;fill:#1d1631;fill-opacity:.82}
-.disc .lb{font:800 10px/1 var(--display);letter-spacing:-.4px;fill:#1d1631}
-.disc .ls{font:800 4.6px/1 var(--display);letter-spacing:1.2px;fill:#1d1631;fill-opacity:.6}
+.disc .lt{font-weight:800;font-family:var(--display);letter-spacing:-.2px;fill:#1d1631}
+.disc .lb{font:italic 800 11px/1 var(--display);letter-spacing:-.5px;fill:#1d1631;fill-opacity:.85}
+.disc .ls{font:700 3.8px/1 var(--display);letter-spacing:.9px;fill:#1d1631;fill-opacity:.6}
 .disc .prog{fill:none;stroke:#fbf9ff;stroke-opacity:.85;stroke-width:2.4;stroke-linecap:round;stroke-dasharray:0 100;opacity:0;transition:opacity .25s ease}
 .disc.on .prog{opacity:1}
 .disc .pp{position:absolute;left:50%;top:50%;width:60px;height:60px;margin:-30px 0 0 -30px;border-radius:50%;display:grid;place-items:center;

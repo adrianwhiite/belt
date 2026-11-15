@@ -233,36 +233,8 @@ wheel.onclick=e=>{const b=e.target.closest('.slot');if(!b)return;const i=+b.data
 wheel.onkeydown=e=>{if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();scrollToIdx(Math.max(0,Math.min(VIEW.length-1,focusIdx+(e.key==='ArrowDown'?1:-1))),true);}else if(e.key==='Enter')choose();};
 function choose(){const c=VIEW[focusIdx];if(c&&c.song){stopPreview();openSheet(c.song);}}
 
-/* ---------- Covers: a little piece of label art for every song, drawn from its genre ---------- */
-const hsl=hex=>{const n=parseInt(hex.slice(1),16),r=(n>>16)/255,g=(n>>8&255)/255,b=(n&255)/255,mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(mx+mn)/2,d=mx-mn;
-  let h=0;if(d){h=mx===r?((g-b)/d)%6:mx===g?(b-r)/d+2:(r-g)/d+4;h*=60;if(h<0)h+=360;}return [h,d?d/(1-Math.abs(2*l-1)):0,l];};
-const tint=(hex,dh,sat,lit)=>{const [h,s,l]=hsl(hex);return `hsl(${Math.round((h+dh)%360)} ${Math.round(Math.min(1,s*sat)*100)}% ${Math.round(Math.min(.95,lit??l)*100)}%)`;};
-const seeded=str=>{let x=2166136261;for(const ch of str)x=Math.imul(x^ch.charCodeAt(0),16777619);return ()=>((x=Math.imul(x^x>>>15,2246822507)^Math.imul(x^x>>>13,3266489909),(x>>>0)/4294967296));};
-const PAPER='#fbf9ff';
-export function coverArt(c){
-  const s=c.song,R=seeded(c.title),bg=c.color,pop=tint(bg,160,1.1,.62),deep=tint(bg,0,1,.3),g=genreOf(c);let a=`<rect x="-40" y="-40" width="80" height="80" fill="${bg}"/>`;
-  const f=n=>n.toFixed(1);
-  if(g==='Party'){ // confetti
-    for(let i=0;i<26;i++){const x=R()*76-38,y=R()*76-38,r=R()*180,col=[INK,PAPER,pop][i%3];
-      a+=R()<.6?`<rect x="${f(x)}" y="${f(y)}" width="7" height="2.6" rx="1" fill="${col}" transform="rotate(${f(r)} ${f(x)} ${f(y)})"/>`:`<circle cx="${f(x)}" cy="${f(y)}" r="${f(1.4+R()*1.6)}" fill="${col}"/>`;}
-  }else if(g==='Holiday'){ // a sky of snowflakes
-    a+=`<rect x="-40" y="10" width="80" height="30" fill="${deep}" opacity=".35"/>`;
-    for(let i=0;i<9;i++){const x=R()*72-36,y=R()*60-36,L=i===0?11:3+R()*5,w=i===0?1.6:1;let fl='';
-      for(let k=0;k<3;k++)fl+=`<line x1="0" y1="${-L}" x2="0" y2="${L}" transform="rotate(${k*60})"/>`;
-      a+=`<g transform="translate(${f(x)} ${f(y)}) rotate(${f(R()*60)})" stroke="${PAPER}" stroke-width="${w}" stroke-linecap="round">${fl}</g>`;}
-  }else if(g==='Ballads'){ // a sun going down over the water
-    a+=`<circle cx="0" cy="2" r="19" fill="${pop}"/>`;
-    for(let i=0;i<6;i++)a+=`<rect x="-40" y="${f(6+i*5.6)}" width="80" height="${f(1.6+i*.7)}" fill="${deep}" opacity="${f(.55+i*.07)}"/>`;
-  }else if(g==='Classics'){ // an old ballroom fan
-    for(let r=78;r>4;r-=8)a+=`<circle cx="0" cy="40" r="${r}" fill="${(r/8|0)%2?deep:bg}" opacity="${(r/8|0)%2?.55:1}"/>`;
-    for(let k=-4;k<=4;k++)a+=`<line x1="0" y1="40" x2="${f(Math.sin(k*.33)*80)}" y2="${f(40-Math.cos(k*.33)*80)}" stroke="${PAPER}" stroke-opacity=".55" stroke-width=".8"/>`;
-  }else{ // your own songs: their melody as bars
-    const ns=s&&s.notes&&s.notes.length?s.notes:null,n=15;
-    for(let i=0;i<n;i++){let h;if(ns){const q=ns[Math.floor(i/n*ns.length)];h=8+((q.m||q.midi||60)%12)/11*40;}else h=8+R()*40;
-      a+=`<rect x="${f(-35+i*5)}" y="${f(-h/2)}" width="3" height="${f(h)}" rx="1.5" fill="${i%4===0?pop:INK}" opacity="${i%4===0?1:.8}"/>`;}
-  }
-  return {svg:a,glow:tint(bg,0,1,.78),pop};
-}
+// A soft, light version of the song's colour for the glow behind the record.
+const glowOf=hex=>{const n=parseInt(hex.slice(1),16),m=x=>Math.round(x+(255-x)*.55);return `rgb(${m(n>>16)},${m(n>>8&255)},${m(n&255)})`;};
 
 /* ---------- Previews ---------- */
 // Land on a song and, after a beat, its chorus fades in; scroll and it fades out. The record spins while it plays.
@@ -272,12 +244,14 @@ const DWELL=650,SETTLE=150;
 const pvMuted=()=>pref('pvOff','0')==='1';
 function paintPreview(c){
   const d=$('preview'),ok=!!(c&&c.song);
-  if(ok){const t=c.title.length>22?c.title.slice(0,21)+'…':c.title;$('recTitle').textContent=t;
-    const art=coverArt(c);$('cover').innerHTML=art.svg;$('pick').style.setProperty('--glow',art.glow);}
+  if(ok){const t=c.title.length>24?c.title.slice(0,23)+'…':c.title,el=$('recTitle');el.textContent=t;
+    el.setAttribute('font-size',Math.max(5.2,Math.min(9,74/(t.length*.6))).toFixed(1));$('pick').style.setProperty('--glow',glowOf(c.color));}
   d.setAttribute('aria-disabled',String(!ok));d.classList.remove('hint');
   d.setAttribute('aria-label',!ok?'No preview for this song yet':pv.on?`Mute previews (playing ${c.title})`:`Play previews, starting with ${c.title}`);
 }
-{const g=$('grooves');let h='';for(let r=40;r<97;r+=1.35)h+=`<circle r="${r.toFixed(2)}" stroke-opacity="${(.03+.03*Math.abs(Math.sin(r*.7))).toFixed(3)}"/>`;g.innerHTML=h;}
+// Fine grooves with a little variation, and a few darker gaps between tracks.
+{const g=$('grooves');let h='';for(let r=56;r<97.6;r+=.55)h+=`<circle r="${r.toFixed(2)}" stroke-opacity="${(.035+.035*Math.abs(Math.sin(r*1.7)*Math.cos(r*.31))).toFixed(3)}"/>`;
+  for(const r of [67,78.5,88])h+=`<circle r="${r}" stroke="#000" stroke-opacity=".4" stroke-width=".8"/>`;g.innerHTML=h;}
 function previewIcon(on){$('previewIcon').setAttribute('d',on?'M8 6h3v12H8zM13 6h3v12h-3z':'M9 6.5v11l9-5.5z');}
 function paintMute(){const m=pvMuted(),b=$('pvMute');b.setAttribute('aria-pressed',String(m));b.setAttribute('aria-label',m?'Turn previews on':'Mute previews');
   $('pvMuteIcon').setAttribute('d',m?'M16 9l5 6M21 9l-5 6':'M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12');}

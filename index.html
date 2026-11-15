@@ -26,7 +26,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/app.css?v=40830c20f0">
+<link rel="stylesheet" href="/css/app.css?v=8bd2600a31">
 </head>
 <body>
 
@@ -58,26 +58,27 @@
     <button class="disc" id="preview" type="button" aria-pressed="false" aria-label="Play a preview">
       <svg class="rec" viewBox="-100 -100 200 200" aria-hidden="true">
         <defs>
-          <radialGradient id="vinylG" r="1"><stop offset=".3" stop-color="#1b1530"/><stop offset=".72" stop-color="#120e21"/><stop offset="1" stop-color="#0c0917"/></radialGradient>
-          <linearGradient id="sheenG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".16"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
-          <path id="labelArc" d="M0 42.4a42.4 42.4 0 1 1 .01 0"/><path id="labelLow" d="M-46 0a46 46 0 0 0 92 0"/><clipPath id="coverClip"><circle r="40"/></clipPath>
+          <radialGradient id="vinylG" r="1"><stop offset=".5" stop-color="#161618"/><stop offset=".85" stop-color="#0e0e10"/><stop offset="1" stop-color="#080809"/></radialGradient>
+          <radialGradient id="waxG" r="1"><stop offset=".88" stop-color="#1c1c1f"/><stop offset="1" stop-color="#131315"/></radialGradient>
+          <radialGradient id="paperG" cx=".36" cy=".3" r=".8"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".6" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".16"/></radialGradient>
         </defs>
         <circle r="99" fill="url(#vinylG)"/>
-        <g id="grooves" fill="none" stroke="#fff" stroke-opacity=".045" stroke-width=".55"></g>
-        <circle r="66" fill="none" stroke="#000" stroke-opacity=".45" stroke-width="1.6"/>
-        <circle r="79" fill="none" stroke="#000" stroke-opacity=".45" stroke-width="1.4"/>
-        <circle r="97.6" fill="none" stroke="#fff" stroke-opacity=".14" stroke-width="1"/>
-        <g class="sheen"><path d="M0 0L-38.4-91.5A99 99 0 0 1 9.6-98.5Z" fill="url(#sheenG)" transform="rotate(-38)"/><path d="M0 0L-38.4-91.5A99 99 0 0 1 9.6-98.5Z" fill="url(#sheenG)" transform="rotate(142)"/></g>
+        <g id="grooves" fill="none" stroke="#fff" stroke-width=".32"></g>
+        <circle r="55" fill="url(#waxG)"/>
+        <circle r="98.7" fill="none" stroke="#fff" stroke-opacity=".16" stroke-width=".7"/>
+        <circle r="99.5" fill="none" stroke="#000" stroke-width="1"/>
         <g class="label">
           <circle r="49" fill="var(--focus,#3ddc97)"/>
-          <g id="cover" clip-path="url(#coverClip)"></g>
-          <circle r="40.3" fill="none" stroke="#1d1631" stroke-opacity=".35" stroke-width=".7"/>
-          <text class="lt"><textPath href="#labelArc" startOffset="50%" text-anchor="middle" id="recTitle">Jingle Bells</textPath></text>
-          <text class="ls"><textPath href="#labelLow" startOffset="50%" text-anchor="middle">belt   ·   33⅓</textPath></text>
-          <circle r="2.6" fill="#0c0917"/>
+          <circle r="49" fill="url(#paperG)"/>
+          <circle r="46" fill="none" stroke="#1d1631" stroke-opacity=".3" stroke-width=".45"/>
+          <text class="lb" y="-20" text-anchor="middle">belt</text>
+          <text class="lt" y="17" text-anchor="middle" id="recTitle">Jingle Bells</text>
+          <text class="ls" y="27" text-anchor="middle">SIDE A · 33⅓ RPM</text>
+          <circle r="3.4" fill="#0a0a0b"/><circle r="3.4" fill="none" stroke="#fff" stroke-opacity=".25" stroke-width=".4"/>
         </g>
         <path class="prog" id="previewProg" d="M0 97A97 97 0 0 1 0-97" pathLength="100"/>
       </svg>
+      <span class="shine" aria-hidden="true"></span>
       <span class="pp" aria-hidden="true"><svg viewBox="0 0 24 24"><path id="previewIcon" d="M9 6.5v11l9-5.5z"/></svg></span>
     </button>
   </div>
@@ -275,7 +276,7 @@
   "/js/nav.js": "/js/nav.js?v=0ce120e2a7",
   "/js/own-setup.js": "/js/own-setup.js?v=700fc3b227",
   "/js/own.js": "/js/own.js?v=e69929ea21",
-  "/js/picker.js": "/js/picker.js?v=389b6a2e5f",
+  "/js/picker.js": "/js/picker.js?v=b076e65b95",
   "/js/results.js": "/js/results.js?v=193c08b04b",
   "/js/songs.js": "/js/songs.js?v=20c4a05d81",
   "/js/stage.js": "/js/stage.js?v=5b5b0c3b24",
