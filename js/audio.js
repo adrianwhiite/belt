@@ -127,7 +127,7 @@ export function fakeVoice(song,sr){
 
 /* ---------- App state ---------- */
 
-export const PV_LEN=15,pv={on:false,song:null,nodes:null,t0:0,raf:0,tok:0,timer:0}; // song previews in the picker
+export const PV_LEN=30,pv={on:false,song:null,nodes:null,t0:0,raf:0,tok:0,timer:0}; // song previews in the picker
 export let ctx=null;export let micStream=null;export let analyser=null;export let monitor=null;S.current=null;S.tracks=null;S.run=null;S.demo=false;S.last=null;S.mix=null;
 export const cache={};
 export function show(id){if(id!=='pick'&&pv.on)stopPreview();document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id));}

@@ -1,7 +1,7 @@
 import {S} from './state.js';
 import {$,esc,pref,reduceMotion,setPref} from './util.js';
 import {analyser,cache,ctx,detectPitch,ensureCtx,fakeVoice,fold,getMic,micStream,monitor,pv,releaseMic,renderTracks,scoreIt,show,stayAwake} from './audio.js';
-import {AUTH,GENRE,INK,fmtLen,lenOf,poseBelter,rememberTake,stopPreview} from './picker.js';
+import {AUTH,GENRE,INK,fmtLen,lenOf,poseBelter,rememberTake,resumePreview,stopPreview} from './picker.js';
 import {showResults,stopMix} from './results.js';
 import {toast} from './account.js';
 import {MELODY_V,buildOwnLines,extractMelody,fakePlan,fakeVoiceOwn,loadOwnTracks,ownLive,paintMood,scoreOwn,setRange} from './own.js';
@@ -49,7 +49,7 @@ export async function openSheet(song){
   }
   if(S.current===song){st.disabled=false;st.textContent=own&&!mel?'Add the vocal track':'Take the stage';}
 }
-export function closeSheet(){$('sheet').classList.remove('on');if(!document.querySelector('.sheet.on'))$('scrim').classList.remove('on');}
+export function closeSheet(){$('sheet').classList.remove('on');if(!document.querySelector('.sheet.on'))$('scrim').classList.remove('on');resumePreview();}
 export const tracksFor=s=>cache[s.id]||(cache[s.id]=s.own?loadOwnTracks(s):renderTracks(s));
 export const inKeyMode=s=>!!s.own&&!s.notes.length;
 export const scoreTake=(s,v,sr,until)=>{let f=detectPitch(v,sr,s.own?512:256);if(until!=null)f=f.filter(x=>x.t<=until);return inKeyMode(s)?scoreOwn(s,f):scoreIt(s,f);};

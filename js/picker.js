@@ -233,60 +233,108 @@ wheel.onclick=e=>{const b=e.target.closest('.slot');if(!b)return;const i=+b.data
 wheel.onkeydown=e=>{if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();scrollToIdx(Math.max(0,Math.min(VIEW.length-1,focusIdx+(e.key==='ArrowDown'?1:-1))),true);}else if(e.key==='Enter')choose();};
 function choose(){const c=VIEW[focusIdx];if(c&&c.song){stopPreview();openSheet(c.song);}}
 
-/* ---------- Previews ---------- */
-// Tap the record to hear the focused song. While it's on, scrolling the drum plays each song you land on,
-// so you can browse by ear. A clip is 15 seconds from where the singing starts.
+/* ---------- Covers: a little piece of label art for every song, drawn from its genre ---------- */
+const hsl=hex=>{const n=parseInt(hex.slice(1),16),r=(n>>16)/255,g=(n>>8&255)/255,b=(n&255)/255,mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(mx+mn)/2,d=mx-mn;
+  let h=0;if(d){h=mx===r?((g-b)/d)%6:mx===g?(b-r)/d+2:(r-g)/d+4;h*=60;if(h<0)h+=360;}return [h,d?d/(1-Math.abs(2*l-1)):0,l];};
+const tint=(hex,dh,sat,lit)=>{const [h,s,l]=hsl(hex);return `hsl(${Math.round((h+dh)%360)} ${Math.round(Math.min(1,s*sat)*100)}% ${Math.round(Math.min(.95,lit??l)*100)}%)`;};
+const seeded=str=>{let x=2166136261;for(const ch of str)x=Math.imul(x^ch.charCodeAt(0),16777619);return ()=>((x=Math.imul(x^x>>>15,2246822507)^Math.imul(x^x>>>13,3266489909),(x>>>0)/4294967296));};
+const PAPER='#fbf9ff';
+export function coverArt(c){
+  const s=c.song,R=seeded(c.title),bg=c.color,pop=tint(bg,160,1.1,.62),deep=tint(bg,0,1,.3),g=genreOf(c);let a=`<rect x="-40" y="-40" width="80" height="80" fill="${bg}"/>`;
+  const f=n=>n.toFixed(1);
+  if(g==='Party'){ // confetti
+    for(let i=0;i<26;i++){const x=R()*76-38,y=R()*76-38,r=R()*180,col=[INK,PAPER,pop][i%3];
+      a+=R()<.6?`<rect x="${f(x)}" y="${f(y)}" width="7" height="2.6" rx="1" fill="${col}" transform="rotate(${f(r)} ${f(x)} ${f(y)})"/>`:`<circle cx="${f(x)}" cy="${f(y)}" r="${f(1.4+R()*1.6)}" fill="${col}"/>`;}
+  }else if(g==='Holiday'){ // a sky of snowflakes
+    a+=`<rect x="-40" y="10" width="80" height="30" fill="${deep}" opacity=".35"/>`;
+    for(let i=0;i<9;i++){const x=R()*72-36,y=R()*60-36,L=i===0?11:3+R()*5,w=i===0?1.6:1;let fl='';
+      for(let k=0;k<3;k++)fl+=`<line x1="0" y1="${-L}" x2="0" y2="${L}" transform="rotate(${k*60})"/>`;
+      a+=`<g transform="translate(${f(x)} ${f(y)}) rotate(${f(R()*60)})" stroke="${PAPER}" stroke-width="${w}" stroke-linecap="round">${fl}</g>`;}
+  }else if(g==='Ballads'){ // a sun going down over the water
+    a+=`<circle cx="0" cy="2" r="19" fill="${pop}"/>`;
+    for(let i=0;i<6;i++)a+=`<rect x="-40" y="${f(6+i*5.6)}" width="80" height="${f(1.6+i*.7)}" fill="${deep}" opacity="${f(.55+i*.07)}"/>`;
+  }else if(g==='Classics'){ // an old ballroom fan
+    for(let r=78;r>4;r-=8)a+=`<circle cx="0" cy="40" r="${r}" fill="${(r/8|0)%2?deep:bg}" opacity="${(r/8|0)%2?.55:1}"/>`;
+    for(let k=-4;k<=4;k++)a+=`<line x1="0" y1="40" x2="${f(Math.sin(k*.33)*80)}" y2="${f(40-Math.cos(k*.33)*80)}" stroke="${PAPER}" stroke-opacity=".55" stroke-width=".8"/>`;
+  }else{ // your own songs: their melody as bars
+    const ns=s&&s.notes&&s.notes.length?s.notes:null,n=15;
+    for(let i=0;i<n;i++){let h;if(ns){const q=ns[Math.floor(i/n*ns.length)];h=8+((q.m||q.midi||60)%12)/11*40;}else h=8+R()*40;
+      a+=`<rect x="${f(-35+i*5)}" y="${f(-h/2)}" width="3" height="${f(h)}" rx="1.5" fill="${i%4===0?pop:INK}" opacity="${i%4===0?1:.8}"/>`;}
+  }
+  return {svg:a,glow:tint(bg,0,1,.78),pop};
+}
 
+/* ---------- Previews ---------- */
+// Land on a song and, after a beat, its chorus fades in; scroll and it fades out. The record spins while it plays.
+// The record or the speaker button mutes previews, and that sticks.
+
+const DWELL=650,SETTLE=150;
+const pvMuted=()=>pref('pvOff','0')==='1';
 function paintPreview(c){
   const d=$('preview'),ok=!!(c&&c.song);
-  if(ok){const t=c.title.length>22?c.title.slice(0,21)+'…':c.title;$('recTitle').textContent=t;}d.setAttribute('aria-disabled',String(!ok));
-  if(+pref('pvUsed','0')<2)queueMicrotask(previewHint);
-  d.setAttribute('aria-label',!ok?'No preview for this song yet':pv.on?`Stop the preview of ${c.title}`:`Play a preview of ${c.title}`);
+  if(ok){const t=c.title.length>22?c.title.slice(0,21)+'…':c.title;$('recTitle').textContent=t;
+    const art=coverArt(c);$('cover').innerHTML=art.svg;$('pick').style.setProperty('--glow',art.glow);}
+  d.setAttribute('aria-disabled',String(!ok));d.classList.remove('hint');
+  d.setAttribute('aria-label',!ok?'No preview for this song yet':pv.on?`Mute previews (playing ${c.title})`:`Play previews, starting with ${c.title}`);
 }
 {const g=$('grooves');let h='';for(let r=40;r<97;r+=1.35)h+=`<circle r="${r.toFixed(2)}" stroke-opacity="${(.03+.03*Math.abs(Math.sin(r*.7))).toFixed(3)}"/>`;g.innerHTML=h;}
 function previewIcon(on){$('previewIcon').setAttribute('d',on?'M8 6h3v12H8zM13 6h3v12h-3z':'M9 6.5v11l9-5.5z');}
+function paintMute(){const m=pvMuted(),b=$('pvMute');b.setAttribute('aria-pressed',String(m));b.setAttribute('aria-label',m?'Turn previews on':'Mute previews');
+  $('pvMuteIcon').setAttribute('d',m?'M16 9l5 6M21 9l-5 6':'M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12');}
 function silencePreview(){
   cancelAnimationFrame(pv.raf);clearTimeout(pv.timer);pv.tok++;
   if(pv.nodes){const {g,srcs}=pv.nodes,t=ctx.currentTime;g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(g.gain.value,t);g.gain.linearRampToValueAtTime(0,t+.25);
     srcs.forEach(x=>{try{x.stop(t+.3);}catch(e){}});pv.nodes=null;}
-  $('previewProg').style.strokeDasharray='0 100';$('preview').classList.remove('wait');pv.song=null;
+  $('previewProg').style.strokeDasharray='0 100';const d=$('preview');d.classList.remove('wait','playing');pv.song=null;$('pick').style.setProperty('--pulse','0');
 }
 export function stopPreview(){silencePreview();pv.on=false;const d=$('preview');d.classList.remove('on');d.setAttribute('aria-pressed','false');previewIcon(false);paintPreview(VIEW[focusIdx]);}
 async function playPreview(song){
   silencePreview();ensureCtx();const tok=pv.tok,d=$('preview');pv.song=song;d.classList.add('wait');
-  let tr;try{tr=await tracksFor(song);}catch(e){delete cache[song.id];if(tok===pv.tok)stopPreview();return;}
-  if(tok!==pv.tok)return;d.classList.remove('wait');
+  let tr;try{tr=await tracksFor(song);}catch(e){delete cache[song.id];if(tok===pv.tok)silencePreview();return;}
+  if(tok!==pv.tok)return;d.classList.remove('wait');d.classList.add('playing');
   const at=Math.max(0,song.own?(song.firstT||0)-.4:(song.down||0)),len=Math.min(PV_LEN,Math.max(3,tr.back.duration-at)),t=ctx.currentTime+.05;
-  const g=ctx.createGain();g.connect(ctx.destination);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.9,t+.35);
+  const g=ctx.createGain();g.connect(ctx.destination);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.9,t+.6);
   g.gain.setValueAtTime(.9,t+len-1.2);g.gain.linearRampToValueAtTime(0,t+len);
+  const an=ctx.createAnalyser();an.fftSize=256;an.smoothingTimeConstant=.5;g.connect(an);const bins=new Uint8Array(an.frequencyBinCount);
   const srcs=[];const add=(buf,v)=>{const s=ctx.createBufferSource(),gg=ctx.createGain();s.buffer=buf;gg.gain.value=v;s.connect(gg);gg.connect(g);s.start(t,at,len);srcs.push(s);};
   add(tr.back,1);if(tr.guide)add(tr.guide,song.own?1:.7);   // your own songs play with the singer, like the record
   pv.nodes={g,srcs};pv.t0=t;
+  let slow=0,beat=0;const pick=$('pick');
   const tick=()=>{const f=Math.min(1,Math.max(0,(ctx.currentTime-pv.t0)/len));$('previewProg').style.strokeDasharray=`${(f*100).toFixed(2)} 100`;
-    if(f<1)pv.raf=requestAnimationFrame(tick);else if(tok===pv.tok)stopPreview();};
+    if(!reduceMotion){an.getByteFrequencyData(bins);const e=(bins[1]+bins[2]+bins[3]+bins[4])/1020;slow=slow*.96+e*.04;
+      beat=Math.max(Math.min(1,Math.max(0,e-slow)*5),beat*.88);pick.style.setProperty('--pulse',beat.toFixed(3));}
+    if(f<1)pv.raf=requestAnimationFrame(tick);else if(tok===pv.tok)silencePreview();};
   tick();
 }
-// Get the song you've settled on ready ahead of a tap, so the preview starts right away.
+// Get the song you've settled on ready early, so its preview starts right away.
 let warmT=0;function warmPreview(c){clearTimeout(warmT);if(!c||!c.song||cache[c.song.id])return;
-  warmT=setTimeout(()=>{if(VIEW[focusIdx]===c&&$('pick').classList.contains('on'))tracksFor(c.song).catch(()=>delete cache[c.song.id]);},900);}
-// Landing on a new song while previewing: wait until the drum settles, then switch.
+  warmT=setTimeout(()=>{if(VIEW[focusIdx]===c&&$('pick').classList.contains('on'))tracksFor(c.song).catch(()=>delete cache[c.song.id]);},500);}
+// Landed on a song: fade out whatever was playing, then start this one once the drum has rested a moment.
 function followPreview(){
   clearTimeout(pv.timer);const c=VIEW[focusIdx];
   if(!c||!c.song){silencePreview();return;}
   if(pv.song===c.song)return;
-  pv.timer=setTimeout(()=>{if(pv.on&&VIEW[focusIdx]===c)playPreview(c.song);},280);
+  if(pv.song)silencePreview();
+  if(!cache[c.song.id])tracksFor(c.song).catch(()=>delete cache[c.song.id]);
+  pv.timer=setTimeout(()=>{if(pv.on&&VIEW[focusIdx]===c&&$('pick').classList.contains('on')&&!$('sheet').classList.contains('on'))playPreview(c.song);},DWELL);
 }
-// until someone has played a preview twice, show a little hint by the record
-function previewHint(){const n=+pref('pvUsed','0'),show=n<2&&$('preview').getAttribute('aria-disabled')!=='true'&&!pv.on;
-  $('preview').classList.toggle('hint',show);}
-$('preview').onclick=()=>{
-  const c=VIEW[focusIdx];if(!c||!c.song)return;
-  if(!pv.on){setPref('pvUsed',String(+pref('pvUsed','0')+1));$('preview').classList.remove('hint');}
-  if(pv.on){stopPreview();return;}
-  pv.on=true;const d=$('preview');d.classList.add('on');d.setAttribute('aria-pressed','true');previewIcon(true);paintPreview(c);playPreview(c.song);
-};
+// The moment the drum moves off the song, fade out; once it rests, follow wherever it landed.
+let settleT=0;
+wheel.addEventListener('scroll',()=>{if(!pv.on)return;
+  if(pv.song&&Math.abs(wheel.scrollTop/IH-focusIdx)>.18)silencePreview();
+  clearTimeout(settleT);settleT=setTimeout(followPreview,SETTLE);},{passive:true});
+function startPreviews(){if(pvMuted()||!$('pick').classList.contains('on'))return;
+  pv.on=true;const d=$('preview');d.classList.add('on');d.setAttribute('aria-pressed','true');previewIcon(true);paintPreview(VIEW[focusIdx]);followPreview();}
+export function resumePreview(){if($('pick').classList.contains('on')&&!pv.on)startPreviews();}
+function toggleMute(){
+  if(pv.on){setPref('pvOff','1');stopPreview();}
+  else{setPref('pvOff','0');startPreviews();clearTimeout(pv.timer);const c=VIEW[focusIdx];if(c&&c.song)playPreview(c.song);}
+  paintMute();
+}
+$('preview').onclick=toggleMute;$('pvMute').onclick=toggleMute;
 $('pickGo').onclick=choose;
-export function openPicker(keep){ensureCtx();show('pick');renderChips();if(focusIdx<0||keep)renderWheel(keep||CATALOG.find(c=>c.song&&c.song.own)||CATALOG.find(c=>c.song&&c.song.id==='jingle'));else paintWheel();}
+export function openPicker(keep){ensureCtx();show('pick');renderChips();if(focusIdx<0||keep)renderWheel(keep||CATALOG.find(c=>c.song&&c.song.own)||CATALOG.find(c=>c.song&&c.song.id==='jingle'));else paintWheel();
+  paintMute();startPreviews();}
 // The next page washes over this one as a circle that grows out of whatever you tapped,
 // while the page underneath eases back and dims.
 function wash(el,update){

@@ -79,6 +79,9 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px so
 .pick-head{display:flex;align-items:center;gap:6px}
 .pick-head .icon{margin-left:-10px}
 .pick-head h2{font-size:30px;font-weight:800;letter-spacing:-.035em;flex:1}
+.wheel-wrap .mute{position:absolute;z-index:3;right:6px;top:4px;color:var(--ink);background:rgba(251,249,255,.28);box-shadow:inset 0 0 0 1px rgba(255,255,255,.35)}
+.wheel-wrap .mute svg{width:22px;height:22px;fill:currentColor}
+.wheel-wrap .mute[aria-pressed=true]{background:transparent;box-shadow:inset 0 0 0 1.5px rgba(29,22,49,.28)}
 .search{display:flex;align-items:center;gap:10px;margin-top:10px;height:48px;padding:0 6px 0 16px;border-radius:99px;background:rgba(29,22,49,.1);cursor:text}
 .search svg{width:19px;height:19px;fill:currentColor;opacity:.7;flex:none}
 .search input{flex:1;min-width:0;border:0;background:none;font:inherit;font-size:16px;font-weight:600;color:var(--ink);outline:none;-webkit-appearance:none;appearance:none}
@@ -93,6 +96,11 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px so
 .chips button{font-size:14px;font-weight:700;padding:8px 13px;border-radius:99px;box-shadow:inset 0 0 0 1.5px rgba(29,22,49,.28);flex:none;font-variant-numeric:tabular-nums}
 .chips button[aria-pressed=true]{background:var(--ink);color:var(--paper);box-shadow:none}
 .wheel-wrap{flex:1;position:relative;min-height:0;margin-top:6px}
+/* a soft spotlight on the song in the middle, and a glow behind the record that breathes with the beat */
+.spot{position:absolute;left:-20%;right:-20%;top:50%;height:300px;margin-top:-150px;pointer-events:none;
+  background:radial-gradient(50% 50% at 46% 50%,rgba(255,255,255,.32),rgba(255,255,255,.1) 45%,transparent 72%);transform:scale(calc(1 + var(--pulse,0) * .06));opacity:calc(.75 + var(--pulse,0) * .25)}
+.glow{position:absolute;right:-150px;top:50%;width:330px;height:330px;margin-top:-165px;border-radius:50%;pointer-events:none;
+  background:radial-gradient(closest-side,var(--glow,#fff),transparent);opacity:calc(.5 + var(--pulse,0) * .45);transform:scale(calc(1 + var(--pulse,0) * .14));transition:background .45s ease}
 .band{position:absolute;left:-8px;right:-8px;top:50%;height:86px;transform:translateY(-50%);border-radius:24px;background:linear-gradient(180deg,rgba(29,22,49,.07),rgba(29,22,49,.13));box-shadow:inset 0 1px 0 rgba(255,255,255,.3),inset 0 -1px 0 rgba(29,22,49,.08),0 14px 26px -16px rgba(29,22,49,.45);pointer-events:none}
 .drum{position:absolute;inset:0;perspective:640px;perspective-origin:50% 50%;overflow:hidden;pointer-events:none;-webkit-mask-image:linear-gradient(transparent,#000 22%,#000 78%,transparent);mask-image:linear-gradient(transparent,#000 22%,#000 78%,transparent)}
 .wi.wide{right:8px}
@@ -124,11 +132,14 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px so
 .disc:active .rec{transform:scale(.97)}
 .disc[aria-disabled=true]{transform:translateX(130px) rotate(40deg);opacity:0;pointer-events:none}
 .disc .label{transform-box:view-box;transform-origin:0 0}
-.disc.on .label,.disc.wait .label{animation:spin 1.8s linear infinite}
-.disc.wait .label{animation-duration:3.6s}
-.disc .lt{font:800 7px/1 var(--display);letter-spacing:.9px;text-transform:uppercase;fill:#1d1631;fill-opacity:.82}
+.disc.playing .label{animation:spin 1.8s linear infinite}
+/* while it plays, the cover art shows; the pause button comes back on hover or keyboard focus */
+.disc .pp{transition:transform .2s cubic-bezier(.22,1,.36,1),opacity .25s ease}
+.disc.playing .pp,.disc.wait .pp{opacity:0;transform:scale(.7)}
+.disc.playing:hover .pp,.disc.playing:focus-visible .pp{opacity:1;transform:none}
+.disc .lt{font:800 6.2px/1 var(--display);letter-spacing:.8px;text-transform:uppercase;fill:#1d1631;fill-opacity:.82}
 .disc .lb{font:800 10px/1 var(--display);letter-spacing:-.4px;fill:#1d1631}
-.disc .ls{font:800 5.8px/1 var(--display);letter-spacing:1.2px;fill:#1d1631;fill-opacity:.6}
+.disc .ls{font:800 4.6px/1 var(--display);letter-spacing:1.2px;fill:#1d1631;fill-opacity:.6}
 .disc .prog{fill:none;stroke:#fbf9ff;stroke-opacity:.85;stroke-width:2.4;stroke-linecap:round;stroke-dasharray:0 100;opacity:0;transition:opacity .25s ease}
 .disc.on .prog{opacity:1}
 .disc .pp{position:absolute;left:50%;top:50%;width:60px;height:60px;margin:-30px 0 0 -30px;border-radius:50%;display:grid;place-items:center;
@@ -144,7 +155,7 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px so
 .pvtip::after{content:"";position:absolute;right:-5px;top:-4px;width:12px;height:12px;background:#1d1631;transform:rotate(45deg);border-radius:2px}
 .pvtip[hidden]{display:block;opacity:0}
 @keyframes spin{to{transform:rotate(1turn)}}
-@media (prefers-reduced-motion: reduce){.disc.on .label,.disc.wait .label{animation:none}}
+@media (prefers-reduced-motion: reduce){.disc.playing .label{animation:none}}
 .own-btn{justify-self:center;font-size:15px;font-weight:700;padding:9px 16px;border-radius:99px;color:var(--ink)}
 
 /* Sheets */
