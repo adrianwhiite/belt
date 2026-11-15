@@ -1,4 +1,5 @@
 import {S} from './state.js';
+import {rotateFacts} from './facts.js';
 import {$,esc} from './util.js';
 import {cache,ctx,ensureCtx} from './audio.js';
 import {CATALOG,VIEW,focusIdx,hay,nq,paintTonight,renderChips,renderWheel,updateCounts} from './picker.js';
@@ -117,7 +118,7 @@ export let pendingOwn=null;S.ownJob=0;
 export function checks(title,items){['ownWorkErr','ownWorkWhy','ownWorkClose'].forEach(i=>$(i).hidden=true);$('ownStep').textContent=title;$('ownChecks').innerHTML=items.map(t=>`<li>${esc(t)}</li>`).join('');}
 export function tick(i,state){const li=$('ownChecks').children[i];if(li)li.dataset.s=state||'done';}
 export const pause=ms=>new Promise(r=>setTimeout(r,ms));
-export function ownView(v){$('ownWork').hidden=v!=='work';$('ownFound').hidden=v!=='found';$('ownForm').hidden=v!=='form';}
+export function ownView(v){if(v!=='work')$('ownTrivia').hidden=true;$('ownWork').hidden=v!=='work';$('ownFound').hidden=v!=='found';$('ownForm').hidden=v!=='form';}
 export function openOwn(){$('scrim').classList.add('on');$('ownSheet').classList.add('on');}
 export function closeOwn(){S.ownJob++;$('ownSheet').classList.remove('on');if(!$('sheet').classList.contains('on')&&!$('authSheet').classList.contains('on'))$('scrim').classList.remove('on');}
 function ownForm(msg){
@@ -172,6 +173,7 @@ export function ownFound(){
 }
 const OWN_STEPS=['Reading the label','Finding the words','Taking out the vocals','Learning the melody','Syncing every word','Mic check'];
 function ownFail(i,msg,e){
+  $('ownTrivia').hidden=true;
   tick(i,'fail');$('ownWorkErr').hidden=false;$('ownWorkErr').textContent=msg;
   const d=$('ownWorkWhy');d.hidden=!e;d.textContent=e?'Details: '+String(e.message||e).slice(0,240):'';$('ownWorkClose').hidden=false;
 }
@@ -222,6 +224,8 @@ async function ingestOwn(file){
 }
 async function finishOwn(job){
   const p=pendingOwn;ownView('work');checks('Setting the stage',OWN_STEPS);tick(0);tick(1);tick(2,'active');
+  // the long wait is taking out the vocals: pass the time with facts about the song and the artist
+  rotateFacts($('ownTrivia'),p.found.title||p.q.title,p.found.artist||p.q.artist,{keep:()=>job===S.ownJob&&!$('ownWork').hidden&&$('ownWorkErr').hidden});
   // word timing starts the moment the singer is separated, while the parts download and the melody is read
   if(p.wordsFor!==p.found.lrc){p.wordsFor=p.found.lrc;p.wordsP=p.taskP.then(task=>aiWords(task,p.found.lrc,p.buf.duration));p.wordsP.catch(()=>{});}
   let sp;try{sp=await p.splitP;}catch(e){if(job!==S.ownJob)return;console.warn('split',e);ownFail(2,setupError(e),e);return;}

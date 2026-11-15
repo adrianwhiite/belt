@@ -8,7 +8,8 @@
 import {S} from './state.js';
 import {$,esc,pref,setPref} from './util.js';
 import {show} from './audio.js';
-import {buildBelter,myGenre,openPicker,poseBelter} from './picker.js';
+import {CATALOG,buildBelter,myGenre,openPicker,poseBelter} from './picker.js';
+import {rotateFacts} from './facts.js';
 import {toast} from './account.js';
 import {crowdFor} from './profile.js';
 import {MODES,renderModes} from './modes.js';
@@ -63,7 +64,7 @@ function hostHandle(m){
   if(pl.away){pl.away=false;push();}
   if(m.t==='bye'){if(st.phase==='lobby'){delete st.players[m.from];st.order=st.order.filter(x=>x!==m.from);}else{pl.away=true;if(m.from===singerId()&&(st.phase==='pick'||st.phase==='sing'))return advance();}return push();}
   if(m.from!==singerId())return;
-  if(m.t==='pick'&&st.phase==='pick'){st.phase='sing';st.now={song:String(m.song).slice(0,60)};push();}
+  if(m.t==='pick'&&st.phase==='pick'){st.phase='sing';st.now={song:String(m.song).slice(0,60),artist:String(m.artist||'').slice(0,60)};push();}
   if(m.t==='done'&&(st.phase==='pick'||st.phase==='sing')){
     const pts=Math.max(0,Math.min(100,Math.round(m.pts)||0));pl.pts+=pts;
     st.phase='result';st.last={id:m.from,song:String(m.song).slice(0,60),pts,score:Math.max(0,Math.min(100,Math.round(m.score)||0))};st.now=null;push();
@@ -119,7 +120,7 @@ const mine=()=>P&&P.st&&singerId()===me.id&&(P.st.phase==='pick'||P.st.phase==='
 setInterval(()=>{
   if(!mine()){sentPick=false;return;}
   const r=S.run;if(!r||!$('sing').classList.contains('on'))return;
-  if(!sentPick){sentPick=true;emit({t:'pick',song:r.song.title});}
+  if(!sentPick){sentPick=true;const c=CATALOG.find(x=>x.song===r.song);emit({t:'pick',song:r.song.title,artist:(c&&c.artist)||''});}
   let n=0,ok=0;for(const p of r.trail)if(p.m!=null){n++;if(p.ok)ok++;}
   emit({t:'live',loud:Math.min(1,(r.lvl||0)*12+(r.lastM!=null?.25:0)),score:n?Math.round(ok/n*100):0,line:(r.spans&&r.spans[0]?r.spans[0].parentNode.textContent:'').replace(/\s+/g,' ').trim().slice(0,80)});
 },300);
@@ -158,7 +159,7 @@ function view(){
       <div class="p-opts"><span>Lock the room</span><span class="p-seg"><button data-lock="0" aria-pressed="${!st.locked}">Open</button><button data-lock="1" aria-pressed="${!!st.locked}">Locked</button></span></div>
       <button class="btn" id="pStart"${st.order.length<2?' disabled':''}>${st.order.length<2?'Waiting for friends…':'Start the party'}</button>
       <p class="p-note">Everyone picks their own song. Up to ${MAX} singers.</p>`
-     :`<p class="p-note">Waiting for ${esc(hostName)} to start the party.</p>`}${lost}`;
+     :`<p class="p-note">Waiting for ${esc(hostName)} to start the party.</p>`}<div class="trivia dark" id="pTrivia" aria-live="polite" hidden></div>${lost}`;
   if(st.phase==='final'){const ids=[...st.order].sort((a,b)=>st.players[b].pts-st.players[a].pts),w=st.players[ids[0]],tie=ids[1]&&st.players[ids[1]].pts===w.pts;
     return `<div class="p-stage me">${bust(w.av)}<h3>${tie?'It’s a tie at the top':esc(w.name)+' wins the party'}</h3><p>${w.pts} points</p></div>${board(st)}
       ${isHost?'<button class="btn" id="pAgain">Play again</button>':`<p class="p-note">${esc(hostName)} can start another round.</p>`}<button class="p-link" id="pLeave">Leave the party</button>`;}
@@ -167,6 +168,7 @@ function view(){
   if(sid===me.id)return `<div class="p-stage me">${bust(sp.av)}<h3>You’re up, ${esc(sp.name)}</h3><p>${st.phase==='sing'?'Your song is waiting.':'Pick any song. Everyone’s watching.'}</p><button class="btn" id="pSing">${st.phase==='sing'?'Back to your song':'Pick your song'}</button></div>${board(st)}${lost}`;
   return `<div class="p-stage">${bust(sp.av)}<h3>${esc(sp.name)} ${st.phase==='sing'?'is singing '+esc(st.now.song):'is picking a song'}</h3>
       ${st.phase==='sing'?`<p class="p-line" id="pLine" aria-live="off"></p><div class="p-score" id="pScore" aria-label="Score so far">0%</div>`:'<p>Get ready to cheer.</p>'}</div>
+    ${st.phase==='sing'?'<div class="trivia dark" id="pTrivia" aria-live="polite" hidden></div>':''}
     <div class="p-cheers">${CHEERS.map((c,i)=>`<button data-cheer="${i}">${c}</button>`).join('')}</div>${board(st)}
     ${isHost?`<button class="p-link" id="pSkip">Skip ${esc(sp.name)}’s turn</button>`:''}${lost}`;
 }
@@ -181,7 +183,11 @@ function render(){
   body.innerHTML=html;body.querySelectorAll('svg.belter').forEach(buildBelter);
   if(fid&&$(fid)){$(fid).focus();try{$(fid).setSelectionRange(pos,pos);}catch(e){}}
   if(st&&st.phase==='sing')paintLive();
+  // something to talk about while you wait: facts about the song being sung, or singing tips in the lobby
+  if(triviaStop)triviaStop();triviaStop=null;
+  if($('pTrivia'))triviaStop=rotateFacts($('pTrivia'),st.phase==='sing'&&st.now?st.now.song:'',st.phase==='sing'&&st.now?st.now.artist:'',{every:8000,keep:()=>$('party').classList.contains('on')});
 }
+let triviaStop=null;
 function paintLive(){const l=$('pLine'),s=$('pScore');if(l)l.textContent=live.line||'';if(s)s.textContent=(live.score||0)+'%';}
 function showCheer(m){const p=P&&P.st&&P.st.players[m.from];if(p)toast(`${p.name}: ${CHEERS[m.i]||CHEERS[0]}`);}
 (function sway(){requestAnimationFrame(sway);const s=$('pSinger');if(!s||!s._b||!$('party').classList.contains('on'))return;

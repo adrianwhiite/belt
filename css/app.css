@@ -512,3 +512,12 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
 .p-cheers button:active{background:rgba(251,249,255,.14)}
 .p-note{font-size:14px;font-weight:600;color:var(--muted);text-align:center}
 .p-link{font-size:15px;font-weight:700;color:var(--muted);text-decoration:underline;align-self:center;padding:8px}
+
+/* Facts while you wait: one at a time, gently fading in */
+.trivia{width:100%;display:grid;gap:4px;padding:14px 16px;border-radius:18px;background:rgba(29,22,49,.06);font-size:16px;font-weight:600;line-height:1.4}
+.trivia small{font-size:13px;font-weight:800;opacity:.6}
+.trivia a{font-size:13px;font-weight:700;opacity:.6;color:inherit;text-decoration:underline;justify-self:start}
+.trivia.in{animation:triviaIn .5s ease both}
+.trivia.dark{background:rgba(251,249,255,.08);color:var(--paper)}
+@keyframes triviaIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){.trivia.in{animation:none}}
