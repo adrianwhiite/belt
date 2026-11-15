@@ -12,6 +12,7 @@
 //   nav        challenge links and the back button
 //   modes      ways to play: the home screen's buttons, and hooks for each mode
 //   profile    your singing stats over time
+//   toons      singers drawn in code, so mouths and faces move smoothly
 //   state      values several parts change (S.current, S.run, S.last, S.user...)
 import './util.js';
 import './songs.js';

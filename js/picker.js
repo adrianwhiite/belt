@@ -1,4 +1,5 @@
 import {S} from './state.js';
+import {buildToon,poseToon} from './toons.js';
 import {$,esc,pref,reduceMotion,setPref} from './util.js';
 import {SONGS} from './songs.js';
 import {PV_LEN,cache,ctx,ensureCtx,pv,show} from './audio.js';
@@ -10,7 +11,7 @@ export const INK='#1d1631';
 // The cast: illustrated singers, three pictures each (resting, singing, eyes closed on a big note).
 // The older drawn Belters stay below only so a saved choice from before still maps to someone.
 export const GENRES={
-  juno:{name:'Juno',label:'Rock singer',img:'01'},
+  juno:{name:'Juno',label:'Rock singer',toon:'juno'},
   marco:{name:'Marco',label:'Rock singer',img:'02'},
   priya:{name:'Priya',label:'Pop singer',img:'03'},
   classic:{legacy:1,name:'Classic Belter',c:'#ffbf47',jk:'#3ddc97',hair:'fan',outfit:'v'},
@@ -31,7 +32,7 @@ function buildPhoto(svg,G){
   poseBelter(b,0,0,0);svg._b=b;return b;
 }
 export function buildBelter(svg){
-  const pick=GENRES[svg.dataset.genre];if(pick&&pick.img)return buildPhoto(svg,pick);
+  const pick=GENRES[svg.dataset.genre];if(pick&&pick.toon)return buildToon(svg,pick.toon);if(pick&&pick.img)return buildPhoto(svg,pick);
   const id='b'+(UID++),G=GENRES[svg.dataset.genre||'classic']||GENRES.classic,c=G.c,jk=G.jk,bust=svg.dataset.bust==='head';
   const back=G.hair==='spikes'?`<path d="M31 44 L33 12 L44 30 L49 2 L58 27 L66 4 L72 29 L83 10 L89 44 Z" fill="${INK}"/>`:
     G.hair==='afro'?`<g fill="#2a1d24">${[[33,30,19],[47,17,19],[62,13,19],[77,18,19],[89,31,17],[24,48,15],[96,48,15]].map(([x,y,r])=>`<circle cx="${x}" cy="${y}" r="${r}"/>`).join('')}</g>`:
@@ -73,7 +74,7 @@ export function buildBelter(svg){
   poseBelter(b,0,0,0);svg._b=b;return b;
 }
 export function poseBelter(b,loud,lift,t){
-  if(!b)return;b.sm+=(loud-b.sm)*.25;const L=b.sm;
+  if(!b)return;if(b.toon)return poseToon(b,loud,lift,t);b.sm+=(loud-b.sm)*.25;const L=b.sm;
   if(b.photo){ // picture singers hold still-faced and move with your voice: a sway, and a lift when you get loud
     const sway=Math.sin(t/900+b.seed),k=1+L*.035;b.g.setAttribute('transform',`translate(0 ${(-lift*3-L*3+sway*.6).toFixed(2)}) rotate(${(-3*L+sway*1.1).toFixed(2)} 60 130) translate(60 130) scale(${k.toFixed(3)}) translate(-60 -130)`);return;}
   const W=15+L*8,H=2.5+L*19,y0=75;
