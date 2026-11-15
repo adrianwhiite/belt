@@ -141,12 +141,24 @@ const logTokenShape = () => {
 const rpHeaders = () => ({ Authorization: `Bearer ${rpToken()}`, "Content-Type": "application/json" });
 const versions: Record<string, string> = {};
 
+// Replicate's gateway sometimes answers 502/503/504 or "slow down" (429) for a moment; wait and try again
+// (about 1, 2, then 4 seconds) before giving up, so a brief blip doesn't fail someone's song.
+const RETRY = new Set([429, 500, 502, 503, 504]);
 async function rp(path: string, init?: RequestInit) {
   logTokenShape();
-  const r = await fetch(RP + path, { ...init, headers: rpHeaders() });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(`Replicate ${r.status} on ${path.split("?")[0]}: ${j?.detail || j?.title || "no details"}`);
-  return j;
+  let last = "";
+  for (let attempt = 0; attempt < 4; attempt++) {
+    if (attempt) await new Promise((res) => setTimeout(res, 1000 * 2 ** (attempt - 1)));
+    let r: Response;
+    try { r = await fetch(RP + path, { ...init, headers: rpHeaders() }); }
+    catch (e) { last = `Replicate unreachable on ${path.split("?")[0]}: ${e}`; continue; }
+    const j = await r.json().catch(() => ({}));
+    if (r.ok) return j;
+    last = `Replicate ${r.status} on ${path.split("?")[0]}: ${j?.detail || j?.title || "no details"}`;
+    if (!RETRY.has(r.status)) break;
+    console.warn("replicate retry", attempt + 1, last);
+  }
+  throw new Error(last);
 }
 async function latest(model: string) {
   if (versions[model]) return versions[model];
