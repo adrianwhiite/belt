@@ -37,13 +37,16 @@ export const CHARS={
       <path d="M55 110 L54 124 M65 110 L66 124" stroke="${MINT}" stroke-width="2" stroke-linecap="round"/></g>`}
     <g class="hd">
       <rect x="54" y="88" width="12" height="24" fill="${sh}"/><rect x="54" y="99" width="12" height="4.5" fill="#17112b"/>
-      <path d="M33 58 C29 30 43 11 60 11 C78 11 91 30 87 58 L89 93 L75 85 L45 85 L31 93 Z" fill="${hr}"/><path d="M31 93 L32.2 79 L45 85 Z M89 93 L87.8 79 L75 85 Z" fill="${MINT}"/>
+      <path d="M44 22 L40.5 9 L52 16 L56.5 7 L63 15 L71 8.5 L73 18 L83.5 14.5 L80 26 Z" fill="${hr}"/>
+      <path d="M31 60 C28 34 42 13 62 13 C81 13 93 29 90 53 L95 67 L88.5 65 L92 81 L84.5 77 L86.5 94 L78.5 85.5 L75 98 L70 87 L50 87 L45 98 L41.5 85.5 L33.5 94 L35.5 77 L28 81 L31.5 65 L25 67 Z" fill="${hr}"/>
+      <path d="M86.5 94 L84.5 77 L92 81 L88.5 65 Z" fill="${MINT}"/>
       <path d="M40 56 C40 35 48 25 60 25 C72 25 80 35 80 56 L80 68 C80 85 70 96 60 96 C50 96 40 85 40 68 Z" fill="${sk}"/>
       ${eyes(id,53.4,66.6,64,6.6,7.6,lid)}
       <path class="brow" d="M47 53.5 L58 55.5" stroke="${hr}" stroke-width="3" stroke-linecap="round"/><path class="brow" d="M62 55.5 L73 53.5" stroke="${hr}" stroke-width="3" stroke-linecap="round"/>
       ${mouthParts(id)}
-      <path d="M38 60 C35 36 46 19 62 19 C75 19 83 28 82 46 C76 37 68 33 61 35 C58 46 50 55 38 60 Z" fill="${hr}"/><path d="M82 46 C84.5 54 84 62 81.5 70 L79.5 50 Z" fill="${hr}"/>
-      <path d="M52 22 C47 28 43 38 41 50 L45 47 C47 38 50 30 56 23 Z" fill="${MINT}"/>
+      <path d="M87 41 C85 23 73 16 59 17 C45 18 35 31 34.5 49 C34 62 36.5 73 41 83 L44.5 73 L48 81.5 L51 71 L55.5 79.5 L61.5 68 C63.5 58 67.5 50 73 45.5 C77.5 42.5 82 41.5 87 41 Z" fill="${hr}"/>
+      <path d="M73 20.5 C62 24.5 53 34 48.5 49 L53 47 C57 36 63.5 28.5 74.5 23 Z" fill="${MINT}"/>
+      <path d="M86 32 C88.5 38 89 46 88 54 L84.5 42 Z" fill="${hr}"/>
     </g>${head?'':mic(sk)}`;},
     mouth:o=>{if(o<.1)return {d:'M56 82.5 Q60 81.2 64 82.5 Q60 82.2 56 82.5 Z'};const W=6+o*5,H=2+o*12;return {d:oh(60,81,W,H),t:[60,81+H,W*.36,H*.3]};}},
 
@@ -107,7 +110,7 @@ export const CHARS={
     mouth:o=>{if(o<.1)return {d:smile(60,82.5,9)};const W=8+o*12,H=2+o*10.5;return {d:oh(60,80.5,W,H),t:[60,80.5+H,W*.34,H*.3]};}},
 
   // Rio: the pop star. Two big puffs, star shades that never come off, and a full-teeth grin.
-  rio:{mood:(L,t,s)=>{const peek=((t/1000+s)%7)<1.6;return {top:[.18,peek&&((t/1000+s)%7)>.6?1:.18],bot:[.15,.15],look:[0,1],brow:[peek?-3:0,peek?-3:0],shades:peek?7:-L*1.5,blink:false};},
+  rio:{mood:(L,t,s)=>{const p=((t/1000+s)%3.2)/3.2;return {top:[],bot:[],look:[0,0],brow:[-L*3,-L*3],shades:-L*1.5,glint:-30+p*120,spark:L>.7,blink:false};},
     tilt:3,bob:1.4,
     draw:(id,head)=>{const sk='#c68a5e',sh='#ad7248',hr='#4a2378';const sp=(x,y,s)=>`<path transform="translate(${x} ${y}) scale(${s})" d="M0 -4 L1 -1 L4 0 L1 1 L0 4 L-1 1 L-4 0 L-1 -1 Z" fill="#fff"/>`;return `
     ${`<g class="body"><path d="M20 141 C22 124 32 113 46 110 L74 110 C88 113 98 124 100 141 Z" fill="${PINK}"/><path d="M54 109 L60 122 L66 109 Z" fill="${INK}"/>
@@ -120,9 +123,11 @@ export const CHARS={
       <path d="M37 58 C36 38 46 26 60 26 C74 26 84 38 83 58 C80 46 72 38 60 36 C48 38 40 46 37 58 Z" fill="${hr}"/>
       <ellipse cx="42" cy="42" rx="6" ry="3.6" fill="${GOLD}" transform="rotate(-40 42 42)"/><ellipse cx="78" cy="42" rx="6" ry="3.6" fill="${GOLD}" transform="rotate(40 78 42)"/>
       <path class="brow" d="M41 50 Q47 46.5 54 49.5" fill="none" stroke="${hr}" stroke-width="2.8" stroke-linecap="round"/><path class="brow" d="M66 49.5 Q73 46.5 79 50" fill="none" stroke="${hr}" stroke-width="2.8" stroke-linecap="round"/>
-      ${eyes(id,53.4,66.6,61,6.2,7.2,sk)}
-      <g class="shades"><path d="M56 62 Q60 60 64 62" fill="none" stroke="${GOLD}" stroke-width="2.4"/>
-      ${[48,72].map(x=>`<path transform="translate(${x} 63)" d="${STAR}" fill="${INK}" stroke="${GOLD}" stroke-width="2.4" stroke-linejoin="round"/>`).join('')}</g>
+      <g class="shades"><clipPath id="${id}st">${[48,72].map(x=>`<path transform="translate(${x} 63)" d="${STAR}"/>`).join('')}</clipPath>
+      <path d="M56 62 Q60 60 64 62" fill="none" stroke="${GOLD}" stroke-width="2.4"/>
+      ${[48,72].map(x=>`<path transform="translate(${x} 63)" d="${STAR}" fill="${INK}" stroke="${GOLD}" stroke-width="2.4" stroke-linejoin="round"/>`).join('')}
+      <g clip-path="url(#${id}st)"><path class="glint" d="M30 80 L40 80 L52 46 L42 46 Z M44 80 L48 80 L60 46 L56 46 Z" fill="#fff" opacity=".85"/></g>
+      <g class="spark" opacity="0">${sp(37,51,1.3)}${sp(83,51,1.1)}${sp(60,74,.8)}</g></g>
       
       ${mouthParts(id,'#d6336c')}
     </g>${head?'':mic(sk)}`;},
@@ -155,7 +160,7 @@ export function buildChar(svg,key){
   const C=CHARS[key]||CHARS.vex,head=svg.dataset.bust==='head',id='c'+Math.random().toString(36).slice(2,8);svg.innerHTML=C.draw(id,head);
   const q=k=>svg.querySelector(k),qa=k=>[...svg.querySelectorAll(k)];
   const eyesEl=qa('.eye').map(e=>({x:+e.dataset.x,y:+e.dataset.y,rx:+e.dataset.rx,ry:+e.dataset.ry,pup:e.querySelector('.pup'),lt:e.querySelector('.lt'),lb:e.querySelector('.lb'),sh:e.querySelector('.sh')}));
-  const b={svg,char:C,hd:q('.hd'),eyes:eyesEl,brows:qa('.brow'),mouth:q('.mouth'),mclip:q('.mclip'),tongue:q('.tongue'),teeth:q('.teeth'),arm:q('.arm'),shades:q('.shades'),wheat:q('.wheat'),seed:Math.random()*10,sm:0};
+  const b={svg,char:C,hd:q('.hd'),eyes:eyesEl,brows:qa('.brow'),mouth:q('.mouth'),mclip:q('.mclip'),tongue:q('.tongue'),teeth:q('.teeth'),arm:q('.arm'),shades:q('.shades'),glint:q('.glint'),spark:q('.spark'),wheat:q('.wheat'),seed:Math.random()*10,sm:0};
   poseChar(b,0,0,0);svg._b=b;return b;
 }
 export function poseChar(b,loud,lift,t){
@@ -170,6 +175,8 @@ export function poseChar(b,loud,lift,t){
     e.pup.parentNode.parentNode.querySelector('ellipse').setAttribute('opacity',shut?0:1);e.pup.parentNode.setAttribute('opacity',shut?0:1);});
   b.brows.forEach((br,i)=>br.setAttribute('transform',`translate(0 ${f(-L*2-lift*2+(md.brow||[0,0])[i%2])})`));
   if(b.shades)b.shades.setAttribute('transform',`translate(0 ${f(md.shades||0)})`);
+  if(b.glint)b.glint.setAttribute('transform',`translate(${f(md.glint||0)} 0)`);
+  if(b.spark)b.spark.setAttribute('opacity',md.spark?1:0);
   if(b.wheat)b.wheat.setAttribute('transform',`rotate(${f(md.wheat||0)} 65 81)`);
   const bob=Math.sin(t/420+b.seed)*(.4+L*C.bob),tilt=C.tilt+Math.sin(t/1100+b.seed)*1.4-L*3;
   b.hd.setAttribute('transform',`translate(0 ${f(bob-lift*2)}) rotate(${f(tilt)} 60 100)`);
