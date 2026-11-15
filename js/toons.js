@@ -137,3 +137,95 @@ export function poseToon(b,loud,lift,t){
   b.hd.setAttribute('transform',`translate(0 ${(bob-lift*2).toFixed(2)}) rotate(${tilt.toFixed(2)} 60 100)`);
   if(b.arm)b.arm.setAttribute('transform',`translate(0 ${(-L*3).toFixed(2)})`);
 }
+
+// ---- Characters with their own shapes (new direction): each draws its own head, face and body,
+// and brings its own mouth, so they move differently. Ink outlines and night-club colours.
+const O=`stroke="${INK}" stroke-width="2.2" stroke-linejoin="round"`;
+const MIC=(hand)=>`<g class="arm"><g class="mic"><rect x="47" y="112" width="6" height="26" rx="3" fill="${INK}" transform="rotate(14 50 112)"/><circle cx="51.5" cy="106" r="7.5" fill="#c9c3d9" ${O}/><path d="M45.5 103 L57.5 103 M44.5 106 L58.5 106 M45.5 109 L57.5 109" stroke="#8e86a6" stroke-width=".8"/></g>${hand}</g>`;
+export const CHARS={
+  vex:{name:'Vex',tilt:-5,bob:.6,
+    draw:(id,head)=>`
+    ${head?'':`<g class="body"><path d="M22 141 C24 124 34 114 48 110 L72 110 C86 114 96 124 98 141 Z" fill="#1b1822" ${O}/>
+      <path d="M38 128 L46 122 L54 130 L62 121 L70 130 L78 122 L84 127" fill="none" stroke="#7dff6a" stroke-width="2.2" stroke-linejoin="round"/>
+      <path d="M54 110 L54 120 M66 110 L66 120" stroke="#7dff6a" stroke-width="1.6"/></g>`}
+    <g class="hd">
+      <path d="M54 86 L66 86 L66 112 L54 112 Z" fill="#efd8c9" ${O}/><rect x="53" y="98" width="14" height="4" rx="1" fill="${INK}"/><path d="M60 102 L58.5 106 L61.5 106 Z" fill="#c9c3d9"/>
+      <path d="M38 52 C36 30 46 16 61 16 C78 16 86 30 84 52 C86 66 84 80 80 90 L71 84 L48 84 L40 90 C36 78 36 64 38 52 Z" fill="#121018" ${O}/>
+      <path d="M41 50 C41 30 49 21 60 21 C71 21 79 30 79 50 L79 66 C79 84 70 97 60 100 C50 97 41 84 41 66 Z" fill="#efd8c9" ${O}/>
+      <path d="M68 24 C76 30 79 40 79 54 C78 74 72 90 62 98 C70 86 74 72 74 56 C74 42 72 32 68 24 Z" fill="#d7bba9"/>
+      <g class="eyeOpen"><path d="M63 62 C66 57.5 74 57.5 77 61 C74 65.5 66 66 63 62 Z" fill="#fff"/><circle class="pup" cx="70.5" cy="61.6" r="2.6" fill="${INK}"/>
+        <path d="M62 61.5 C66 56 74 56 78.5 60 L81 57.5" fill="none" stroke="${INK}" stroke-width="2.6" stroke-linecap="round"/><path d="M63.5 60.2 C67 58.8 73.5 58.8 76.5 60.6" stroke="#efd8c9" stroke-width="1.8" fill="none"/></g>
+      <path class="eyeShut" d="M63 62 C67 64.5 73 64.5 77.5 61.5 L80.5 59.5" fill="none" stroke="${INK}" stroke-width="2.6" stroke-linecap="round" opacity="0"/>
+      <path class="brow" d="M63 52 L77 50.5" stroke="${INK}" stroke-width="2.6" stroke-linecap="round"/><circle cx="78.5" cy="52.6" r="1.2" fill="#c9c3d9"/>
+      <path d="M60.5 69 L59 76 L62 76" fill="none" stroke="#c9a08b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <path class="mouth" fill="#4a1d3a" ${O}/>
+      <path d="M37 54 C35 32 47 18 62 18 C68 18 73 20 76 23 C66 24 58 32 56 44 C55 56 52 66 46 74 C44 66 42 60 37 54 Z" fill="#121018" ${O}/>
+      <path d="M50 26 C56 22 63 21 69 22 C60 26 56 32 54 40 Z" fill="#3b4a8a"/>
+    </g>
+    ${head?'':MIC('<ellipse cx="50" cy="121" rx="6.5" ry="5.5" fill="#efd8c9" '+O+'/>')}`,
+    mouth:o=>{const W=7+o*6,H=1.2+o*11,x=63,y=82;return o<.08?`M${x-6} ${y} C${x-2} ${y+1.4} ${x+2} ${y+.6} ${x+6} ${y-2.2} C${x+3} ${y+1.8} ${x-2} ${y+2.6} ${x-6} ${y} Z`
+      :`M${x-W/2} ${y-.6} C${x-W/4} ${y-2} ${x+W/4} ${y-2.6} ${x+W/2} ${y-1.8} C${x+W/2} ${y+H*.7} ${x+W/4} ${y+H} ${x} ${y+H} C${x-W/3} ${y+H} ${x-W/2} ${y+H*.6} ${x-W/2} ${y-.6} Z`;}},
+  lou:{name:'Big Lou',tilt:2,bob:1.5,
+    draw:(id,head)=>`
+    ${head?'':`<g class="body"><path d="M2 141 C4 118 20 104 42 100 L78 100 C100 104 116 118 118 141 Z" fill="#7a1f2e" ${O}/>
+      <path d="M48 100 L60 124 L72 100 Z" fill="#fbf6ee" ${O}/><path d="M42 100 L48 100 L60 124 L50 141 L36 141 C40 126 40 112 42 100 Z M78 100 L72 100 L60 124 L70 141 L84 141 C80 126 80 112 78 100 Z" fill="#e2b553" ${O}/>
+      <path d="M52 104 L60 108 L68 104 L68 112 L60 108 L52 112 Z" fill="${INK}"/><circle cx="76" cy="116" r="3" fill="#ff5d8f"/></g>`}
+    <g class="hd">
+      <path d="M48 88 L72 88 L72 104 C66 108 54 108 48 104 Z" fill="#dba07a" ${O}/>
+      <ellipse cx="30" cy="64" rx="6" ry="8" fill="#dba07a" ${O}/><ellipse cx="90" cy="64" rx="6" ry="8" fill="#dba07a" ${O}/>
+      <path d="M32 46 C32 28 45 19 60 19 C75 19 88 28 88 46 L89 70 C89 88 77 99 60 99 C43 99 31 88 31 70 Z" fill="#e8ad84" ${O}/>
+      <path d="M78 26 C86 34 88 46 88 62 C88 82 80 94 66 98 C78 88 82 76 82 60 C82 46 81 34 78 26 Z" fill="#d4946b"/>
+      <path d="M32 46 C31 25 46 14 62 14 C79 14 90 25 88 46 C84 36 74 30 60 30 C48 30 38 35 32 46 Z" fill="#1d1a1a" ${O}/>
+      <path d="M32 46 C32 50 33 54 34 56 L37 44 Z M88 46 C88 50 87 54 86 56 L83 44 Z" fill="#b8b2ae" ${O}/>
+      <path d="M48 20 C56 17 66 17 74 20" stroke="#5d5757" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <g class="eyeOpen"><ellipse cx="49" cy="60" rx="2.8" ry="3.2" fill="${INK}"/><ellipse cx="71" cy="60" rx="2.8" ry="3.2" fill="${INK}"/><circle cx="50" cy="59" r=".9" fill="#fff"/><circle cx="72" cy="59" r=".9" fill="#fff"/></g>
+      <path class="eyeShut" d="M45 61 Q49 57 53 61 M67 61 Q71 57 75 61" fill="none" stroke="${INK}" stroke-width="2.4" stroke-linecap="round" opacity="0"/>
+      <path d="M41 63 L38 65 M41 60 L37.5 60 M79 63 L82 65 M79 60 L82.5 60" stroke="#b97e5a" stroke-width="1.2" stroke-linecap="round"/>
+      <path class="brow" data-s="-1" d="M42 53 C45 49 52 49 55 51.5" stroke="#3a3434" stroke-width="4.2" fill="none" stroke-linecap="round"/>
+      <path class="brow" data-s="1" d="M65 51.5 C68 49 75 49 78 53" stroke="#3a3434" stroke-width="4.2" fill="none" stroke-linecap="round"/>
+      <path class="mouth" fill="#5a1520" ${O}/>
+      <ellipse cx="60" cy="69" rx="6.5" ry="5.4" fill="#d4946b" ${O}/><ellipse cx="58" cy="67.5" rx="2" ry="1.4" fill="#f2c4a2"/>
+      <path d="M60 75 C53 73 46 74 42 78 C40 80 37 80 36 77 C37 82 43 83 48 80 C52 78 56 78 60 79 C64 78 68 78 72 80 C77 83 83 82 84 77 C83 80 80 80 78 78 C74 74 67 73 60 75 Z" fill="#2a2424" ${O}/>
+      <path d="M58 94 Q60 95.5 62 94" stroke="#b97e5a" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+    </g>
+    ${head?'':MIC('<ellipse cx="50" cy="121" rx="7.5" ry="6.5" fill="#e8ad84" '+O+'/>')}`,
+    mouth:o=>{const W=14+o*12,H=2+o*16,y=79;return `M${60-W/2} ${y} C${60-W/4} ${y-1} ${60+W/4} ${y-1} ${60+W/2} ${y} C${60+W/2} ${y+H*.8} ${60+W/4} ${y+H} 60 ${y+H} C${60-W/4} ${y+H} ${60-W/2} ${y+H*.8} ${60-W/2} ${y} Z`;}},
+  moxie:{name:'Moxie',tilt:0,bob:1.1,
+    draw:(id,head)=>`
+    ${head?'':`<g class="body"><path d="M30 112 C30 98 90 98 90 112 Z" fill="#d9601a" ${O}/><path d="M14 141 C16 124 26 112 42 108 L78 108 C94 112 104 124 106 141 Z" fill="#ff7a1a" ${O}/>
+      <path d="M50 108 L50 124 M70 108 L70 124" stroke="#2b2733" stroke-width="2" stroke-linecap="round"/><rect x="44" y="126" width="32" height="10" rx="3" fill="#2b2733"/><path d="M48 131 L72 131" stroke="#c6ff3d" stroke-width="2" stroke-dasharray="3 2"/></g>`}
+    <g class="hd">
+      <path d="M34 34 L28 12 L48 24 Z M86 34 L92 12 L72 24 Z" fill="#8f8a99" ${O}/><path d="M35 28 L32 17 L43 24 Z M85 28 L88 17 L77 24 Z" fill="#ff9fb8"/>
+      <path d="M26 58 C26 34 42 22 60 22 C78 22 94 34 94 58 C94 72 88 82 80 88 C74 96 66 100 60 100 C54 100 46 96 40 88 C32 82 26 72 26 58 Z" fill="#8f8a99" ${O}/>
+      <path d="M28 66 L22 70 L30 72 M92 66 L98 70 L90 72" fill="#8f8a99" ${O}/>
+      <path d="M40 74 C40 66 50 64 60 64 C70 64 80 66 80 74 C80 88 70 98 60 98 C50 98 40 88 40 74 Z" fill="#ece8f2" ${O}/>
+      <path d="M30 56 C36 48 48 50 54 56 C57 59 63 59 66 56 C72 50 84 48 90 56 C88 66 80 70 72 68 C66 66 64 63 60 63 C56 63 54 66 48 68 C40 70 32 66 30 56 Z" fill="#2b2733"/>
+      <path d="M50 30 L54 40 M60 28 L60 40 M70 30 L66 40" stroke="#6f6a7a" stroke-width="2.2" stroke-linecap="round"/>
+      <g class="eyeOpen"><circle cx="45" cy="59" r="4.6" fill="#fff"/><circle cx="75" cy="59" r="4.6" fill="#fff"/><g class="pup"><circle cx="46" cy="59.6" r="2.8" fill="${INK}"/><circle cx="76" cy="59.6" r="2.8" fill="${INK}"/></g>
+        <path d="M40 56 C43 54 48 54 50 55.5 M70 55.5 C72 54 77 54 80 56" stroke="#2b2733" stroke-width="2.6" stroke-linecap="round"/></g>
+      <path class="eyeShut" d="M40.5 60 Q45 56 49.5 60 M70.5 60 Q75 56 79.5 60" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" opacity="0"/>
+      <path class="mouth" fill="#5a1530" ${O}/>
+      <path d="M55 72 C55 69.5 65 69.5 65 72 C65 75 61 77 60 77 C59 77 55 75 55 72 Z" fill="${INK}"/>
+      <path d="M30 40 C30 18 90 18 90 40" fill="none" stroke="#2b2733" stroke-width="4.5" stroke-linecap="round"/>
+      <rect x="20" y="44" width="11" height="18" rx="5" fill="#c6ff3d" ${O}/><rect x="89" y="44" width="11" height="18" rx="5" fill="#c6ff3d" ${O}/>
+    </g>
+    ${head?'':MIC('<ellipse cx="50" cy="121" rx="6.5" ry="5.5" fill="#8f8a99" '+O+'/>')}`,
+    mouth:o=>{const y=80;if(o<.08)return `M53 ${y} C55 ${y+3} 58.5 ${y+3} 60 ${y} C61.5 ${y+3} 65 ${y+3} 67 ${y} C65 ${y+4.6} 61.5 ${y+4.4} 60 ${y+2} C58.5 ${y+4.4} 55 ${y+4.6} 53 ${y} Z`;
+      const W=10+o*8,H=2+o*12;return `M${60-W/2} ${y} L${60-W/2+2} ${y+2.6} L${60-W/2+4} ${y} C${60-2} ${y+1} ${60+2} ${y+1} ${60+W/2-4} ${y} L${60+W/2-2} ${y+2.6} L${60+W/2} ${y} C${60+W/2} ${y+H*.8} ${60+W/4} ${y+H} 60 ${y+H} C${60-W/4} ${y+H} ${60-W/2} ${y+H*.8} ${60-W/2} ${y} Z`;}},
+};
+export function buildChar(svg,key){
+  const C=CHARS[key],head=svg.dataset.bust==='head',id='c'+Math.random().toString(36).slice(2,8);svg.innerHTML=C.draw(id,head);
+  const q=k=>svg.querySelector(k),qa=k=>[...svg.querySelectorAll(k)];
+  const b={svg,char:C,hd:q('.hd'),open:q('.eyeOpen'),shut:q('.eyeShut'),pups:qa('.pup'),brows:qa('.brow'),mouth:q('.mouth'),arm:q('.arm'),seed:Math.random()*10,sm:0};
+  poseChar(b,0,0,0);svg._b=b;return b;
+}
+export function poseChar(b,loud,lift,t){
+  const C=b.char;b.sm+=(loud-b.sm)*.22;const L=Math.max(0,Math.min(1,b.sm)),o=Math.max(0,(L-.06)/.94);
+  b.mouth.setAttribute('d',C.mouth(o));
+  const blink=((t/1000+b.seed)%4.4)<.12,shut=blink||L>.72;b.open.setAttribute('opacity',shut?0:1);b.shut.setAttribute('opacity',shut?1:0);
+  const look=Math.sin(t/2300+b.seed);b.pups.forEach(p=>p.setAttribute('transform',`translate(${(look*1).toFixed(2)} 0)`));
+  b.brows.forEach(br=>br.setAttribute('transform',`translate(0 ${(-L*3-lift*2).toFixed(2)})`));
+  const bob=Math.sin(t/420+b.seed)*(.4+L*C.bob),tilt=C.tilt+Math.sin(t/1100+b.seed)*1.4-L*3;
+  b.hd.setAttribute('transform',`translate(0 ${(bob-lift*2).toFixed(2)}) rotate(${tilt.toFixed(2)} 60 100)`);
+  if(b.arm)b.arm.setAttribute('transform',`translate(0 ${(-L*3).toFixed(2)})`);
+}
