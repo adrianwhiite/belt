@@ -7,16 +7,31 @@ import {SONG_BY_ID,authFor,openMine} from './account.js';
 
 /* ---------- Belters: the singer avatars. Rounded shapes, genres, always on light paper ---------- */
 export const INK='#1d1631';
+// The cast: illustrated singers, three pictures each (resting, singing, eyes closed on a big note).
+// The older drawn Belters stay below only so a saved choice from before still maps to someone.
 export const GENRES={
-  classic:{name:'Classic Belter',c:'#ffbf47',jk:'#3ddc97',hair:'fan',outfit:'v'},
-  rocker:{name:'Rocker',c:'#a594ff',jk:'#1d1631',hair:'spikes',eyes:'shades',outfit:'leather'},
-  jazz:{name:'Jazz',c:'#6fd3f2',jk:'#1d1631',hat:'fedora',outfit:'turtle'},
-  pop:{name:'Pop',c:'#ff9cbb',jk:'#9b8aff',hair:'pony',mic:'headset',outfit:'sparkle'},
-  country:{name:'Country',c:'#ffc85c',jk:'#3a7bd5',hat:'cowboy',outfit:'bandana'},
-  soul:{name:'Soul',c:'#5fdcab',jk:'#ff5d8f',hair:'afro',outfit:'chain'}
+  juno:{name:'Juno',label:'Rock singer',img:'01'},
+  marco:{name:'Marco',label:'Rock singer',img:'02'},
+  priya:{name:'Priya',label:'Pop singer',img:'03'},
+  classic:{legacy:1,name:'Classic Belter',c:'#ffbf47',jk:'#3ddc97',hair:'fan',outfit:'v'},
+  rocker:{legacy:1,name:'Rocker',c:'#a594ff',jk:'#1d1631',hair:'spikes',eyes:'shades',outfit:'leather'},
+  jazz:{legacy:1,name:'Jazz',c:'#6fd3f2',jk:'#1d1631',hat:'fedora',outfit:'turtle'},
+  pop:{legacy:1,name:'Pop',c:'#ff9cbb',jk:'#9b8aff',hair:'pony',mic:'headset',outfit:'sparkle'},
+  country:{legacy:1,name:'Country',c:'#ffc85c',jk:'#3a7bd5',hat:'cowboy',outfit:'bandana'},
+  soul:{legacy:1,name:'Soul',c:'#5fdcab',jk:'#ff5d8f',hair:'afro',outfit:'chain'}
 };
 let UID=0;
+const OLD_TO_CAST={classic:'marco',rocker:'juno',jazz:'marco',pop:'priya',country:'marco',soul:'priya'};
+export const CAST_KEYS=Object.keys(GENRES).filter(k=>!GENRES[k].legacy);
+function buildPhoto(svg,G){
+  // full: chest up, filling the frame; head: the face and hair, for small round badges
+  const head=svg.dataset.bust==='head',[x,y,w]=head?[-38,-14,196]:[-10,-6,140];
+  svg.innerHTML=`<g class="ph">${['a','b','c'].map((f,i)=>`<image href="/belters/${G.img}-${f}.webp" x="${x}" y="${y}" width="${w}" height="${w}" style="opacity:${i?0:1}"/>`).join('')}</g>`;
+  const b={svg,photo:true,g:svg.querySelector('.ph'),frames:[...svg.querySelectorAll('image')],cur:0,seed:Math.random()*10,sm:0};
+  poseBelter(b,0,0,0);svg._b=b;return b;
+}
 export function buildBelter(svg){
+  const pick=GENRES[svg.dataset.genre];if(pick&&pick.img)return buildPhoto(svg,pick);
   const id='b'+(UID++),G=GENRES[svg.dataset.genre||'classic']||GENRES.classic,c=G.c,jk=G.jk,bust=svg.dataset.bust==='head';
   const back=G.hair==='spikes'?`<path d="M31 44 L33 12 L44 30 L49 2 L58 27 L66 4 L72 29 L83 10 L89 44 Z" fill="${INK}"/>`:
     G.hair==='afro'?`<g fill="#2a1d24">${[[33,30,19],[47,17,19],[62,13,19],[77,18,19],[89,31,17],[24,48,15],[96,48,15]].map(([x,y,r])=>`<circle cx="${x}" cy="${y}" r="${r}"/>`).join('')}</g>`:
@@ -59,6 +74,9 @@ export function buildBelter(svg){
 }
 export function poseBelter(b,loud,lift,t){
   if(!b)return;b.sm+=(loud-b.sm)*.25;const L=b.sm;
+  if(b.photo){ // swap to the singing picture as you get louder, eyes closed on the big notes; a gentle sway on top
+    const f=L>.7?2:L>.22?1:0;if(f!==b.cur){b.frames[b.cur].style.opacity=0;b.frames[f].style.opacity=1;b.cur=f;}
+    const sway=Math.sin(t/900+b.seed);b.g.setAttribute('transform',`translate(0 ${(-lift*3-L*1.5+sway*.6).toFixed(2)}) rotate(${(-3*L+sway*1.1).toFixed(2)} 60 130)`);return;}
   const W=15+L*8,H=2.5+L*19,y0=75;
   const d=`M${60-W/2} ${y0} Q60 ${y0-1.5-L*1.5} ${60+W/2} ${y0} Q${60+W/2} ${y0+H} 60 ${y0+H} Q${60-W/2} ${y0+H} ${60-W/2} ${y0} Z`;
   b.mouth.setAttribute('d',d);b.mpath.setAttribute('d',d);
@@ -73,7 +91,7 @@ export function poseBelter(b,loud,lift,t){
 }
 
 
-export const myGenre=()=>GENRES[pref('genre','classic')]?pref('genre','classic'):'classic';
+export const myGenre=()=>{const g=pref('genre','');return GENRES[g]&&!GENRES[g].legacy?g:OLD_TO_CAST[g]||'juno';};
 export function paintMe(){document.querySelectorAll('svg.belter[data-me]').forEach(s=>{s.dataset.genre=myGenre();buildBelter(s);});}
 paintMe();
 

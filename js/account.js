@@ -3,7 +3,7 @@ import {bestPerSong,flushPerformances,loadPerformances,nights,rangeOf,scoreTrend
 import {$,esc,pref,reduceMotion,setPref} from './util.js';
 import {SONGS} from './songs.js';
 import {ctx,ensureCtx,show} from './audio.js';
-import {CATALOG,GENRES,bests,buildBelter,myGenre,openPicker,paintAuth,paintMe} from './picker.js';
+import {CAST_KEYS,CATALOG,GENRES,bests,buildBelter,myGenre,openPicker,paintAuth,paintMe} from './picker.js';
 import {openSheet,scoreTake,tracksFor} from './stage.js';
 import {noteName,showResults,stopMix} from './results.js';
 
@@ -129,7 +129,7 @@ export async function openMine(){
   const name=S.user?(S.user.user_metadata&&(S.user.user_metadata.full_name||S.user.user_metadata.name)||String(S.user.email||'You').split('@')[0]):'You';
   $('meName').textContent=name.split(' ')[0];
   const since=S.user&&S.user.created_at?new Intl.DateTimeFormat(undefined,{month:'short',year:'numeric'}).format(new Date(S.user.created_at)):'';
-  const setSub=(extra)=>{$('meSub').textContent=[GENRES[myGenre()].name,extra||(since?'since '+since:'')].filter(Boolean).join(' · ');};setSub();
+  const setSub=(extra)=>{$('meSub').textContent=[GENRES[myGenre()].label||GENRES[myGenre()].name,extra||(since?'since '+since:'')].filter(Boolean).join(' · ');};setSub();
   $('signOut').textContent=S.user?'Sign out':'Sign in to keep your takes';$('signOut').hidden=!S.sb;
   $('shareSet').hidden=true;
   const b=Object.values(bests());$('stBest').textContent=b.length?Math.max(...b)+'%':'–';
@@ -158,11 +158,11 @@ $('shareSet').onclick=async()=>{
   try{if(navigator.share){await navigator.share({title:'My Belt setlist',text});return;}await navigator.clipboard.writeText(text);toast('Setlist copied');}catch(e){}
 };
 function openCast(){
-  $('cast').innerHTML=Object.entries(GENRES).map(([k,G])=>`<button data-g="${k}" aria-pressed="${k===myGenre()}"><svg class="belter" data-genre="${k}" viewBox="0 0 120 140"></svg>${esc(G.name)}</button>`).join('');
+  $('cast').innerHTML=CAST_KEYS.map(k=>[k,GENRES[k]]).map(([k,G])=>`<button data-g="${k}" aria-pressed="${k===myGenre()}"><svg class="belter" data-genre="${k}" viewBox="0 0 120 140"></svg>${esc(G.name)}</button>`).join('');
   document.querySelectorAll('#cast svg').forEach(buildBelter);
   $('scrim').classList.add('on');$('castSheet').classList.add('on');
 }
-$('cast').onclick=e=>{const b=e.target.closest('button');if(!b)return;setPref('genre',b.dataset.g);document.querySelectorAll('#cast button').forEach(x=>x.setAttribute('aria-pressed',x===b));paintMe();$('meSub').textContent=GENRES[myGenre()].name+($('meSub').textContent.includes('since')?' · since'+$('meSub').textContent.split('since')[1]:'');};
+$('cast').onclick=e=>{const b=e.target.closest('button');if(!b)return;setPref('genre',b.dataset.g);document.querySelectorAll('#cast button').forEach(x=>x.setAttribute('aria-pressed',x===b));paintMe();$('meSub').textContent=(GENRES[myGenre()].label||GENRES[myGenre()].name)+($('meSub').textContent.includes('since')?' · since'+$('meSub').textContent.split('since')[1]:'');};
 export const closeCast=()=>{$('castSheet').classList.remove('on');if(!document.querySelector('.sheet.on'))$('scrim').classList.remove('on');};
 $('castDone').onclick=closeCast;$('editMe').onclick=openCast;
 $('scrim').addEventListener('click',()=>{if($('castSheet').classList.contains('on'))closeCast();});
