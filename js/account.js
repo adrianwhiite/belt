@@ -1,5 +1,5 @@
 import {S} from './state.js';
-import {bestPerSong,flushPerformances,loadPerformances,nights,rangeOf,scoreTrend,voiceLabel} from './profile.js';
+import {bestPerSong,flushPerformances,loadPerformances,nights,rangeOf,scoreTrend,voiceLabel,voiceTraits} from './profile.js';
 import {$,esc,pref,reduceMotion,setPref} from './util.js';
 import {SONGS} from './songs.js';
 import {ctx,ensureCtx,show} from './audio.js';
@@ -91,16 +91,15 @@ async function flushPending(){
   catch(e){toast('Couldn’t save your take. Try again from the song.');}
 }
 // Profile: your Belter, what your voice is like, a few numbers and your tickets. Works signed out too.
-const PIANO_LO=36,PIANO_HI=84,BLACK=new Set([1,3,6,8,10]);
-function pianoSVG(low,high){
-  const lo=Math.min(PIANO_LO,low-2)-(Math.min(PIANO_LO,low-2)%12),hi=Math.max(PIANO_HI,high+2);let whites=[],blacks=[];
-  for(let m=lo;m<=hi;m++)(BLACK.has(m%12)?blacks:whites).push(m);
-  const W=whites.length,ww=100/W,on=m=>m>=low&&m<=high;let x=0,out='';const xs={};
-  for(const m of whites){xs[m]=x;out+=`<rect x="${(x*ww).toFixed(2)}%" y="0" width="${(ww-.35).toFixed(2)}%" height="100%" rx="2" class="${on(m)?'kw on':'kw'}"/>`;x++;}
-  for(const m of blacks){const left=xs[m-1];if(left==null)continue;out+=`<rect x="${((left+1)*ww-ww*.32).toFixed(2)}%" y="0" width="${(ww*.64).toFixed(2)}%" height="60%" rx="1.5" class="${on(m)?'kb on':'kb'}"/>`;}
-  const pos=m=>((xs[m]??xs[m-1]??0)+.5)*ww;
-  return `<svg class="keys" role="img" aria-label="Your range on a piano, ${noteName(low)} to ${noteName(high)}" preserveAspectRatio="none">${out}</svg>
-    <div class="key-tags" aria-hidden="true"><span style="left:${pos(low).toFixed(1)}%">${noteName(low)}</span><span style="left:${pos(high).toFixed(1)}%">${noteName(high)}</span></div>`;
+// A five-point web of what Belt hears in your singing. Bigger shape, more of that.
+function webSVG(tr){
+  const W=260,H=210,cx=W/2,cy=106,R=70,n=tr.length,pt=(i,r)=>{const a=-Math.PI/2+i*2*Math.PI/n;return [cx+Math.cos(a)*r,cy+Math.sin(a)*r];};
+  const ring=k=>tr.map((_,i)=>pt(i,R*k).map(v=>v.toFixed(1)).join(',')).join(' ');
+  const shape=tr.map((t,i)=>pt(i,R*t.v).map(v=>v.toFixed(1)).join(',')).join(' ');
+  const labels=tr.map((t,i)=>{const [x,y]=pt(i,R+18),anchor=Math.abs(x-cx)<4?'middle':x<cx?'end':'start';return `<text x="${x.toFixed(1)}" y="${(y+4).toFixed(1)}" text-anchor="${anchor}">${esc(t.k)}</text>`;}).join('');
+  return `<svg class="web" viewBox="0 0 ${W} ${H}" role="img" aria-label="Your voice: ${tr.map(t=>t.k+' '+Math.round(t.v*100)+' out of 100').join(', ')}">
+    ${[1,.66,.33].map(k=>`<polygon points="${ring(k)}" class="ring"/>`).join('')}${tr.map((_,i)=>{const [x,y]=pt(i,R);return `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" class="ring"/>`;}).join('')}
+    <g class="you" style="transform-origin:${cx}px ${cy}px"><polygon points="${shape}"/>${tr.map((t,i)=>{const [x,y]=pt(i,R*t.v);return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.4"/>`;}).join('')}</g>${labels}</svg>`;
 }
 function firstSongOf(){const own=CATALOG.find(c=>c.song&&c.song.own);return own?own.song:SONG_BY_ID.jingle;}
 function paintVoice(rows){
@@ -113,16 +112,19 @@ function paintVoice(rows){
   const v=voiceLabel(rg),tr=scoreTrend(rows,10);let trend='';
   if(tr.length>=4){const h=Math.floor(tr.length/2),a=tr.slice(0,h),b=tr.slice(h),avg=x=>x.reduce((s,y)=>s+y.score,0)/x.length,d=Math.round(avg(b)-avg(a));
     trend=d>=3?` Up ${d} points lately.`:d<=-3?' A few off nights lately. It happens.':' Holding steady.';}
-  card.innerHTML=`<p class="v-kicker">Your voice</p><h4>${esc(v.where)}, ${esc(v.wide)}</h4>${pianoSVG(rg.low,rg.high)}
-    <p class="v-sub">${noteName(rg.low)} to ${noteName(rg.high)}, from your last ${rg.takes} ${rg.takes===1?'take':'takes'}.${trend}</p>`;
+  const traits=voiceTraits(rows)||[],sorted=traits.slice().sort((a,b)=>b.v-a.v),best=sorted[0],work=sorted[sorted.length-1];
+  const lead=best?`Your strength is ${best.k.toLowerCase()}`+(work&&work!==best&&best.v-work.v>.12?`, and ${work.k.toLowerCase()} is the one to grow.`:'.'):'';
+  card.innerHTML=`<p class="v-kicker">Your voice</p><h4>${esc(v.where)}, ${esc(v.wide)}</h4>${traits.length?webSVG(traits):''}
+    <p class="v-sub">${esc(lead)}${trend} <span class="v-notes">From your last ${rg.takes} ${rg.takes===1?'take':'takes'}, ${noteName(rg.low)} to ${noteName(rg.high)}.</span></p>`;
 }
 const ago=d=>{const days=Math.round((new Date().setHours(0,0,0,0)-new Date(d).setHours(0,0,0,0))/864e5);
   return days<=0?'Tonight':days===1?'Last night':days<7?days+' nights ago':days<14?'Last week':new Intl.DateTimeFormat(undefined,{month:'short',day:'numeric'}).format(d);};
+// A saved take as a ticket stub from that night's show: the song on the ticket, the date on the tear-off.
 const tick=(r,fmtD,fmtM)=>{const s=SONG_BY_ID[r.song_id],d=new Date(r.created_at);return `<li class="take ticket" data-id="${r.id}" style="--c:${s?s.color:'#9b8aff'}">
-  <button class="take-open" data-path="${esc(r.audio_path)}" data-song="${esc(r.song_id)}" aria-label="Play your take of ${esc(r.song_title)} from your show on ${fmtM.format(d)} ${fmtD.format(d)}">
-    <span class="tk-stub" aria-hidden="true"><b>${fmtD.format(d)}</b><small>${fmtM.format(d)}</small></span>
-    <span class="tk-main"><span class="take-title">${esc(r.song_title)}</span><span class="take-meta">${esc(ago(d))}${r.score!=null?' · '+r.score+'%':''}</span></span>
-    <span class="tk-play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6.5v11l9-5.5z"/></svg></span></button>
+  <button class="take-open tk" data-path="${esc(r.audio_path)}" data-song="${esc(r.song_id)}" aria-label="Play your take of ${esc(r.song_title)} from your show on ${fmtM.format(d)} ${fmtD.format(d)}">
+    <span class="tk-main"><small class="tk-kick" aria-hidden="true">Belt Live · Admit one</small><span class="take-title">${esc(r.song_title)}</span>
+      <span class="take-meta">${esc(ago(d))}${r.score!=null?' · '+r.score+'%':''}</span></span>
+    <span class="tk-stub" aria-hidden="true"><b>${fmtD.format(d)}</b><small>${fmtM.format(d)}</small><span class="tk-play"><svg viewBox="0 0 24 24"><path d="M9 6.5v11l9-5.5z"/></svg></span></span></button>
   <button class="take-del" data-path="${esc(r.audio_path)}" aria-label="Delete this take of ${esc(r.song_title)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></li>`;};
 export async function openMine(){
   stopMix();show('mine');

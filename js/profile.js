@@ -97,3 +97,20 @@ export function voiceLabel(rg){
   const wide=span>=19?'with a huge reach':span>=14?'with a wide reach':span>=9?'with good reach':'still stretching out';
   return {where,wide};
 }
+
+// Five things Belt can actually hear in your singing, each 0..1, from your recent takes.
+// No timbre guessing: these come straight from the notes you hit and how you sang them.
+export function voiceTraits(rows,n=20){
+  const r=rows.filter(x=>x.cover>=.3).slice(0,n);if(!r.length)return null;
+  const clamp=v=>Math.max(.06,Math.min(1,v)),avg=a=>a.reduce((s,x)=>s+x,0)/a.length,sd=a=>{const m=avg(a);return Math.sqrt(avg(a.map(x=>(x-m)**2)));};
+  const rg=rangeOf(rows,n),scores=r.map(x=>x.score||0);
+  const linesSd=r.map(x=>(x.lines||[]).filter(l=>l.sung).map(l=>l.pct)).filter(a=>a.length>=4).map(sd);
+  const highs=r.map(x=>x.sharp_flat&&x.sharp_flat.high).filter(v=>v!=null).map(Math.abs);
+  return [
+    {k:'On key',v:clamp((avg(scores)-20)/70)},
+    {k:'Range',v:rg?clamp((rg.high-rg.low-5)/19):.3},
+    {k:'Stamina',v:clamp(.6*avg(r.map(x=>x.cover))/.8+.4*avg(r.map(x=>x.finished?1:0)))},
+    {k:'Steady',v:linesSd.length?clamp(1-avg(linesSd)*2.2):clamp(1-sd(scores)/25)},
+    {k:'High notes',v:highs.length?clamp(1-avg(highs)/80):clamp((avg(scores)-30)/70)},
+  ];
+}
