@@ -30,7 +30,7 @@ const STAR='M0 -10 L2.9 -3.4 L10 -2.9 L4.6 1.8 L6.3 9 L0 5.2 L-6.3 9 L-4.6 1.8 L
 
 export const CHARS={
   // Vex: narrow and sharp. Half-shut eyes, flat little mouth; sings like she's above it all.
-  vex:{mood:(L,t,s)=>{const roll=((t/1000+s)%7.5)<1.1;return {top:L>.55?[.5+(L-.55)*1.4,.5+(L-.55)*1.4]:roll?[.3,.3]:[.52,.52],bot:[0,0],look:roll?[0,-3.4]:[Math.sin(t/3000+s)*1.2,.6],brow:roll?[-2,-2]:[0,0],blink:!roll};},
+  vex:{glow:['#3ddc97','#c9a8ff','#ff5d8f'],mood:(L,t,s)=>{const roll=((t/1000+s)%7.5)<1.1;return {top:L>.55?[.5+(L-.55)*1.4,.5+(L-.55)*1.4]:roll?[.3,.3]:[.52,.52],bot:[0,0],look:roll?[0,-3.4]:[Math.sin(t/3000+s)*1.2,.6],brow:roll?[-2,-2]:[0,0],blink:!roll};},
     tilt:-4,bob:.5,
     draw:(id,head)=>{const sk='#f3dfd3',sh='#dcc1b3',hr='#241a3d',lid='#7a5fa8';return `
     ${`<g class="body"><path d="M40 114 C42 100 78 100 80 114 Z" fill="#17112b"/><path d="M26 141 C27 123 37 112 50 109 L70 109 C83 112 93 123 94 141 Z" fill="${hr}"/>
@@ -51,7 +51,7 @@ export const CHARS={
     mouth:o=>{if(o<.1)return {d:'M56 82.5 Q60 81.2 64 82.5 Q60 82.2 56 82.5 Z'};const W=6+o*5,H=2+o*12;return {d:oh(60,81,W,H),t:[60,81+H,W*.36,H*.3]};}},
 
   // Big Lou: wide and square. Tiny eyes, giant moustache, and a mouth that opens like a garage door.
-  lou:{mood:(L,t,s)=>{const wink=((t/1000+s)%6)<.35;return L>.35?{top:[.3,.3],bot:[.42,.42],look:[0,0],brow:[-4,-4]}:{top:[.1,wink?1:.42],bot:[0,wink?0:.12],look:[1.6,.4],brow:[-4.5,1],blink:false};},
+  lou:{glow:['#ffc23d','#ff7a9c','#f2b38a'],mood:(L,t,s)=>{const wink=((t/1000+s)%6)<.35;return L>.35?{top:[.3,.3],bot:[.42,.42],look:[0,0],brow:[-4,-4]}:{top:[.1,wink?1:.42],bot:[0,wink?0:.12],look:[1.6,.4],brow:[-4.5,1],blink:false};},
     tilt:2,bob:1.6,
     draw:(id,head)=>{const sk='#eaa77a',sh='#d48c5e',hr='#2a2026';return `
     ${`<g class="body"><path d="M-2 141 C0 118 16 104 42 101 L78 101 C104 104 120 118 122 141 Z" fill="#8e2440"/><path d="M49 101 L60 126 L71 101 Z" fill="${PAPER}"/>
@@ -71,7 +71,7 @@ export const CHARS={
     mouth:o=>{if(o<.1)return {d:'M52 87.6 Q59 91.2 68.4 85 Q60.5 89.6 52 87.6 Z'};const W=14+o*10,H=2+o*14;return {d:dee(60,81,W,H),t:[60,81+H,W*.3,H*.32]};}},
 
   // Moxie: a raccoon DJ. Wide head with cheek tufts, masked eyes, and little fangs when he lets rip.
-  moxie:{mood:(L,t,s)=>L>.4?{top:[0,0],bot:[0,0],look:[0,0],brow:[0,0],tilt:[0,0]}:{top:[.34,.34],bot:[.08,.08],tilt:[16,-16],look:[Math.sin(t/650+s)>0?2:-2,.4],brow:[0,0]},
+  moxie:{glow:['#ff8a3d','#4cc9f0','#ffd23f'],mood:(L,t,s)=>L>.4?{top:[0,0],bot:[0,0],look:[0,0],brow:[0,0],tilt:[0,0]}:{top:[.34,.34],bot:[.08,.08],tilt:[16,-16],look:[Math.sin(t/650+s)>0?2:-2,.4],brow:[0,0]},
     tilt:0,bob:1.2,
     draw:(id,head)=>{const fur='#8f8a9c',dk='#2b2733';return `
     ${`<g class="body"><path d="M32 113 C32 99 88 99 88 113 Z" fill="#e06d1f"/><path d="M16 141 C18 124 28 113 43 109 L77 109 C92 113 102 124 104 141 Z" fill="#ff8a3d"/>
@@ -91,7 +91,7 @@ export const CHARS={
       const W=10+o*8,H=2+o*11,l=60-W/2,r=60+W/2;return {d:dee(60,y,W,H),t:[60,y+H,W*.3,H*.3],teeth:`M${f(l+1)} ${y-2} h3.6 l-1.8 5.6 Z M${f(r-4.6)} ${y-2} h3.6 l-1.8 5.6 Z`};}},
 
   // Dot: small and round. Giant glasses, giant bun, and the biggest voice in the room.
-  dot:{mood:(L,t,s)=>({top:L>.35?[.5,.5]:[.12,.12],bot:L>.35?[.5,.5]:[.36,.36],look:[0,.5],brow:[-1-L*3,-1-L*3],blink:L<.35}),
+  dot:{glow:['#3ddc97','#ff7ab0','#fff1a8'],mood:(L,t,s)=>({top:L>.35?[.5,.5]:[.12,.12],bot:L>.35?[.5,.5]:[.36,.36],look:[0,.5],brow:[-1-L*3,-1-L*3],blink:L<.35}),
     tilt:0,bob:2.2,
     draw:(id,head)=>{const sk='#7a4b33',sh='#633a26',hr='#ddd6ee';return `
     ${`<g class="body"><path d="M30 141 C31 126 39 116 50 113 L70 113 C81 116 89 126 90 141 Z" fill="${MINT}"/><path d="M56 113 L60 141 L64 113 Z" fill="#25b87a"/>
@@ -110,7 +110,7 @@ export const CHARS={
     mouth:o=>{if(o<.1)return {d:smile(60,82.5,9)};const W=8+o*12,H=2+o*10.5;return {d:oh(60,80.5,W,H),t:[60,80.5+H,W*.34,H*.3]};}},
 
   // Rio: the pop star. Two big puffs, star shades that never come off, and a full-teeth grin.
-  rio:{mood:(L,t,s)=>{const p=((t/1000+s)%3.2)/3.2;return {top:[],bot:[],look:[0,0],brow:[-L*3,-L*3],shades:-L*1.5,glint:-30+p*120,spark:L>.7,blink:false};},
+  rio:{glow:['#ff5d8f','#ffc23d','#c6a8ff'],mood:(L,t,s)=>{const p=((t/1000+s)%3.2)/3.2;return {top:[],bot:[],look:[0,0],brow:[-L*3,-L*3],shades:-L*1.5,glint:-30+p*120,spark:L>.7,blink:false};},
     tilt:3,bob:1.4,
     draw:(id,head)=>{const sk='#c68a5e',sh='#ad7248',hr='#4a2378';const sp=(x,y,s)=>`<path transform="translate(${x} ${y}) scale(${s})" d="M0 -4 L1 -1 L4 0 L1 1 L0 4 L-1 1 L-4 0 L-1 -1 Z" fill="#fff"/>`;return `
     ${`<g class="body"><path d="M20 141 C22 124 32 113 46 110 L74 110 C88 113 98 124 100 141 Z" fill="${PINK}"/><path d="M54 109 L60 122 L66 109 Z" fill="${INK}"/>
@@ -134,7 +134,7 @@ export const CHARS={
     mouth:o=>{const W=15+o*4,H=4.6+o*12,y=81;return {d:dee(60,y,W,H),t:[60,y+H+1,W*.3,H*.26],teeth:band(60,y,W,Math.min(3.4,H*.7))};}},
 
   // Buck: tall and long. Hat down low, beard up high, and a warm round mouth somewhere in the middle.
-  buck:{mood:(L,t,s)=>({top:L>.4?[.3,.3]:[.46,.46],bot:[.06,.06],look:[-1.2,.6],brow:[0,0],wheat:L>.15?-4:Math.sin(t/480+s)*9}),
+  buck:{glow:['#5aa2ea','#ff9a4d','#ffe08a'],mood:(L,t,s)=>({top:L>.4?[.3,.3]:[.46,.46],bot:[.06,.06],look:[-1.2,.6],brow:[0,0],wheat:L>.15?-4:Math.sin(t/480+s)*9}),
     tilt:-2,bob:1,
     draw:(id,head)=>{const sk='#f2c4a0',sh='#dfa67e',bd='#d9662b',bd2='#b94f1c',hat='#f4e6c8';return `
     ${`<g class="body"><path d="M16 141 C18 123 30 112 46 109 L74 109 C90 112 102 123 104 141 Z" fill="#4c8fd6"/><path d="M60 122 V141" stroke="#3a74b8" stroke-width="2"/><rect x="74" y="122" width="13" height="10" rx="2" fill="#3a74b8"/>

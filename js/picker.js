@@ -1,5 +1,5 @@
 import {S} from './state.js';
-import {buildChar,poseChar} from './toons.js';
+import {CHARS,buildChar,poseChar} from './toons.js';
 import {$,esc,pref,reduceMotion,setPref} from './util.js';
 import {SONGS} from './songs.js';
 import {PV_LEN,cache,ctx,ensureCtx,pv,show} from './audio.js';
@@ -86,7 +86,9 @@ export function poseBelter(b,loud,lift,t){
 
 
 export const myGenre=()=>{const g=pref('genre','');return GENRES[g]&&!GENRES[g].legacy?g:OLD_TO_CAST[g]||'vex';};
-export function paintMe(){document.querySelectorAll('svg.belter[data-me]').forEach(s=>{s.dataset.genre=myGenre();buildBelter(s);});}
+export function paintMe(){document.querySelectorAll('svg.belter[data-me]').forEach(s=>{s.dataset.genre=myGenre();buildBelter(s);});
+  // the profile glows in your singer's colours
+  const g=(CHARS[GENRES[myGenre()].char]||{}).glow;if(g)g.forEach((c,i)=>$('mine').style.setProperty('--m'+(i+1),c));}
 paintMe();
 
 /* ---------- Home: still wordmark, bars that move like audio ---------- */
