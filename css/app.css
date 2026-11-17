@@ -558,8 +558,10 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
 
 /* Profile sections: clear breathing room and a header for each part */
 #mine .who{margin-bottom:6px}
-#mine .voice{margin-top:22px}
-#mine .stats{margin:20px 0 32px}
+#mine .voice{margin-top:0}
+#mine .stats{margin:18px 0 0}
+.me-rule{border:0;height:1px;background:rgba(29,22,49,.22);margin:22px 0 24px}
+#mine .voice{margin-bottom:30px}
 #mine .set{padding-top:2px}
 #mine .set h3{font-size:22px;font-weight:800;letter-spacing:-.03em;margin-bottom:12px}
 .voice .v-sub{margin-top:8px}
