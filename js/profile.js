@@ -3,6 +3,8 @@
 // the performances table; signed out, the last 20 wait on this device and move over when you sign in.
 import {S} from './state.js';
 import {pref,setPref} from './util.js';
+import {SONGS} from './songs.js';
+import {newPins,pinState} from './badges.js';
 
 const LOCAL='perfs',KEEP=20;
 export const CROWD=[[90,'Standing ovation'],[78,'Lighters up'],[62,'Big cheers'],[45,'Warm applause'],[25,'Clapping along'],[0,'Brave first try']];
@@ -35,7 +37,7 @@ export function performanceRow(song,sc,until,lagSamples,sr){
     song_id:song.id,song_title:song.title,own:!!song.own,mode:S.mode||'karaoke',
     score:Math.max(0,Math.min(100,Math.round(sc.acc*100))),cover:+sc.cover.toFixed(3),
     sang_seconds:+st.filter(x=>x.sung).reduce((a,x)=>a+(x.L.end-x.L.start),0).toFixed(1),
-    finished:until==null,
+    finished:until==null,song_len:+((song.own?song.len:song.lastEnd-song.lead)||0).toFixed(1)||null,
     low_midi:hit.length>8?+pctile(hit,.05).toFixed(1):null,high_midi:hit.length>8?+pctile(hit,.95).toFixed(1):null,
     key_shift:sc.key||0,
     lines:st.map((x,i)=>({i,pct:+x.pct.toFixed(2),sung:x.sung})),
@@ -113,4 +115,11 @@ export function voiceTraits(rows,n=20){
     {k:'Steady',v:linesSd.length?clamp(1-avg(linesSd)*2.2):clamp(1-sd(scores)/25)},
     {k:'High notes',v:highs.length?clamp(1-avg(highs)/80):clamp((avg(scores)-30)/70)},
   ];
+}
+
+// Pins: where you stand on every pin, and which ones you just earned.
+export const builtInIds=()=>SONGS.map(s=>s.id);
+export async function checkPins(){
+  const rows=await loadPerformances(500),state=pinState(rows,builtInIds());
+  return {state,...newPins(state,rows.filter(r=>r.cover>=.3).length)};
 }

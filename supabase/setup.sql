@@ -66,3 +66,6 @@ alter table public.performances enable row level security;
 create policy "Read own performances"   on public.performances for select to authenticated using ((select auth.uid()) = user_id);
 create policy "Add own performances"    on public.performances for insert to authenticated with check ((select auth.uid()) = user_id);
 create policy "Delete own performances" on public.performances for delete to authenticated using ((select auth.uid()) = user_id);
+
+-- How long the song is, in seconds (for pins like "finish a 5-minute song").
+alter table public.performances add column if not exists song_len real;

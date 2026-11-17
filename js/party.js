@@ -10,6 +10,7 @@ import {$,esc,pref,setPref} from './util.js';
 import {show} from './audio.js';
 import {CATALOG,buildBelter,myGenre,openPicker,poseBelter} from './picker.js';
 import {rotateFacts} from './facts.js';
+import {pinsAfterSong} from './stage.js';
 import {toast} from './account.js';
 import {crowdFor} from './profile.js';
 import {MODES,renderModes} from './modes.js';
@@ -161,6 +162,7 @@ function view(){
       <p class="p-note">Everyone picks their own song. Up to ${MAX} singers.</p>`
      :`<p class="p-note">Waiting for ${esc(hostName)} to start the party.</p>`}<div class="trivia dark" id="pTrivia" aria-live="polite" hidden></div>${lost}`;
   if(st.phase==='final'){const ids=[...st.order].sort((a,b)=>st.players[b].pts-st.players[a].pts),w=st.players[ids[0]],tie=ids[1]&&st.players[ids[1]].pts===w.pts;
+    if(ids[0]===me.id&&!tie&&w.pts>0&&!P.won){P.won=true;setPref('partyWins',String(+pref('partyWins','0')+1));setTimeout(()=>pinsAfterSong(),300);}
     return `<div class="p-stage me">${bust(w.av)}<h3>${tie?'It’s a tie at the top':esc(w.name)+' wins the party'}</h3><p>${w.pts} points</p></div>${board(st)}
       ${isHost?'<button class="btn" id="pAgain">Play again</button>':`<p class="p-note">${esc(hostName)} can start another round.</p>`}<button class="p-link" id="pLeave">Leave the party</button>`;}
   if(st.phase==='result'&&st.last){const lp=st.players[st.last.id]||{name:'',av:'vex'};
@@ -176,6 +178,7 @@ function render(){
   const body=$('partyBody');if(!body)return;
   if(!P&&!form.name)form.name=defaultName();
   const st=P&&P.st,html=view();
+  if(st&&st.phase!=='final'&&P.won)P.won=false;
   $('partyRound').textContent=st&&st.phase!=='lobby'&&st.phase!=='final'?`Round ${Math.min(st.round,st.rounds)} of ${st.rounds}`:'';
   $('partyBackLabel').textContent=P?'Leave':'Home';
   if(html===sig)return;sig=html;
@@ -210,7 +213,7 @@ $('partyBody').addEventListener('click',async e=>{
   if(d.kick){banned.add(d.kick);delete st.players[d.kick];st.order=st.order.filter(x=>x!==d.kick);return push();}
   if(b.id==='pStart')return startGame();
   if(b.id==='pSkip')return advance();
-  if(b.id==='pAgain'){for(const id of st.order)st.players[id].pts=0;st.phase='lobby';st.round=1;st.turn=0;st.last=null;st.locked=false;return push();}
+  if(b.id==='pAgain'){P.won=false;for(const id of st.order)st.players[id].pts=0;st.phase='lobby';st.round=1;st.turn=0;st.last=null;st.locked=false;return push();}
 });
 $('partyBack').onclick=partyBack;
 window.addEventListener('pagehide',()=>{if(P&&ch)emit({t:'bye'});});

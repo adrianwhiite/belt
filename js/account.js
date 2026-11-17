@@ -1,5 +1,6 @@
 import {S} from './state.js';
-import {bestPerSong,flushPerformances,loadPerformances,nights,rangeOf,scoreTrend,voiceLabel,voiceTraits} from './profile.js';
+import {bestPerSong,flushPerformances,loadPerformances,nights,rangeOf,scoreTrend,voiceLabel,voiceTraits,checkPins} from './profile.js';
+import {TIER,celebrate,pinSVG} from './badges.js';
 import {$,esc,pref,reduceMotion,setPref} from './util.js';
 import {SONGS} from './songs.js';
 import {ctx,ensureCtx,show} from './audio.js';
@@ -132,6 +133,19 @@ const tick=(r,fmtD,fmtM)=>{const s=SONG_BY_ID[r.song_id],d=new Date(r.created_at
       <span class="take-meta">${esc(ago(d))}${r.score!=null?' · '+r.score+'%':''}</span></span>
     <span class="tk-stub" aria-hidden="true"><b>${fmtD.format(d)}</b><small>${fmtM.format(d)}</small><span class="tk-play"><svg viewBox="0 0 24 24"><path d="M9 6.5v11l9-5.5z"/></svg></span></span></button>
   <button class="take-del" data-path="${esc(r.audio_path)}" aria-label="Delete this take of ${esc(r.song_title)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></li>`;};
+// Your pins, worn on a denim jacket. Earned ones first, then the ones you're closest to.
+let pinsOpen=false,pinCache=[];
+async function paintPins(){
+  let r;try{r=await checkPins();}catch(e){return;}
+  const st=r.state.slice().sort((a,b)=>(b.earned-a.earned)||(b.have/b.need-a.have/a.need));pinCache=st;
+  const got=st.filter(p=>p.earned).length;$('pinCount').textContent=`${got} of ${st.length}`;
+  const show=pinsOpen?st:st.slice(0,10);
+  $('pinGrid').innerHTML=show.map((p,i)=>`<button class="pinb${p.earned?'':' off'}" data-i="${i}" aria-label="${esc(p.name)}, ${p.earned?TIER[p.tier]+' pin, earned':'locked, '+p.have+' of '+p.need}" style="--r:${((i*37)%11)-5}deg">${pinSVG(p,{locked:!p.earned,size:56})}</button>`).join('');
+  $('pinAll').hidden=st.length<=10;$('pinAll').textContent=pinsOpen?'Show fewer':`See all ${st.length} pins`;$('pinAll').setAttribute('aria-expanded',String(pinsOpen));
+  if(r.fresh.length)celebrate(r.fresh);
+}
+$('pinGrid').onclick=e=>{const b=e.target.closest('.pinb');if(b)celebrate([pinCache[+b.dataset.i]],{view:true});};
+$('pinAll').onclick=()=>{pinsOpen=!pinsOpen;paintPins();};
 export async function openMine(){
   stopMix();show('mine');
   const name=S.user?(S.user.user_metadata&&(S.user.user_metadata.full_name||S.user.user_metadata.name)||String(S.user.email||'You').split('@')[0]):'You';
@@ -142,6 +156,7 @@ export async function openMine(){
   $('shareSet').hidden=true;
   const b=Object.values(bests());$('stBest').textContent=b.length?Math.max(...b)+'%':'–';
   $('stNights').textContent='0';$('stSongs').textContent='0';
+  paintPins();
   loadPerformances().then(rows=>{if(!$('mine').classList.contains('on'))return;
     paintVoice(rows);const n=nights(rows),best=bestPerSong(rows);
     $('stNights').textContent=String(n.count);$('stSongs').textContent=String(new Set(rows.map(r=>r.song_id)).size);

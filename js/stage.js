@@ -1,5 +1,6 @@
 import {S} from './state.js';
-import {performanceRow,recordPerformance} from './profile.js';
+import {checkPins,performanceRow,recordPerformance} from './profile.js';
+import {celebrate} from './badges.js';
 import {$,esc,pref,reduceMotion,setPref} from './util.js';
 import {analyser,cache,ctx,detectPitch,ensureCtx,fakeVoice,fold,getMic,micStream,monitor,pv,releaseMic,renderTracks,scoreIt,show,stayAwake} from './audio.js';
 import {AUTH,GENRE,INK,fmtLen,lenOf,poseBelter,rememberTake,resumePreview,stopPreview} from './picker.js';
@@ -386,7 +387,7 @@ function finish(){
     }
     const until=r.stopT??null,sc=scoreTake(song,voice,sr,until);
     S.last={song,voice,sc,until};if(!S.demo){rememberTake(song,sc);setPref('sung',String(+pref('sung','0')+1));
-      try{recordPerformance(performanceRow(song,sc,until,lag,sr)).catch(e=>console.warn('belt: performance',e));}catch(e){console.warn('belt: performance',e);}}
+      try{recordPerformance(performanceRow(song,sc,until,lag,sr)).then(pinsAfterSong).catch(e=>console.warn('belt: performance',e));}catch(e){console.warn('belt: performance',e);}}
     $('busy').classList.remove('on');showResults();
    }catch(e){ // never leave anyone stuck on the stage
     console.error('finish',e);$('busy').classList.remove('on');
@@ -403,3 +404,14 @@ document.addEventListener('visibilitychange',()=>{
   }else if($('sing').classList.contains('on'))stayAwake(true);
 });
 
+
+// New pins pop up a moment after the results land, so the score and the confetti get their beat first.
+export async function pinsAfterSong(){
+  let r;try{r=await checkPins();}catch(e){return console.warn('belt: pins',e);}
+  if(!r.fresh.length&&!r.first)return;
+  const t0=Date.now();
+  const wait=()=>{const up=['result','party'].find(id=>$(id).classList.contains('on'))&&!document.querySelector('.sheet.on');
+    if(up){setTimeout(()=>{if(r.fresh.length)celebrate(r.fresh);else toast(`You’ve already earned ${r.first} pins. They’re on your profile.`);},1400);}
+    else if(Date.now()-t0<20000)setTimeout(wait,400);};
+  wait();
+}
