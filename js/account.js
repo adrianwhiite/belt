@@ -114,8 +114,14 @@ function paintVoice(rows){
     trend=d>=3?` Up ${d} points lately.`:d<=-3?' A few off nights lately. It happens.':' Holding steady.';}
   const traits=voiceTraits(rows)||[],sorted=traits.slice().sort((a,b)=>b.v-a.v),best=sorted[0],work=sorted[sorted.length-1];
   const lead=best?`Your strength is ${best.k.toLowerCase()}`+(work&&work!==best&&best.v-work.v>.12?`, and ${work.k.toLowerCase()} is the one to grow.`:'.'):'';
-  card.innerHTML=`<p class="v-kicker">Your voice</p><h4>${esc(v.where)}, ${esc(v.wide)}</h4>${traits.length?webSVG(traits):''}
-    <p class="v-sub">${esc(lead)}${trend} <span class="v-notes">From your last ${rg.takes} ${rg.takes===1?'take':'takes'}, ${noteName(rg.low)} to ${noteName(rg.high)}.</span></p>`;
+  // the headline and one line about your voice; the chart opens on request (and stays open if you left it open)
+  const open=pref('voiceOpen','0')==='1';
+  card.innerHTML=`<p class="v-kicker">Your voice</p><h4>${esc(v.where)}, ${esc(v.wide)}</h4><p class="v-sub">${esc(lead)}${trend}</p>
+    ${traits.length?`<button class="v-more" id="voiceToggle" aria-expanded="${open}" aria-controls="voiceMore"><span>${open?'Hide':'See'} your voice chart</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+    <div id="voiceMore"${open?'':' hidden'}>${webSVG(traits)}<p class="v-notes">From your last ${rg.takes} ${rg.takes===1?'take':'takes'}, ${noteName(rg.low)} to ${noteName(rg.high)}.</p></div>`:''}`;
+  const t=$('voiceToggle');if(t)t.onclick=()=>{const now=t.getAttribute('aria-expanded')!=='true',more=$('voiceMore');
+    t.setAttribute('aria-expanded',String(now));t.querySelector('span').textContent=(now?'Hide':'See')+' your voice chart';more.hidden=!now;setPref('voiceOpen',now?'1':'0');
+    if(now){const w=more.querySelector('.web');w.replaceWith(w.cloneNode(true));}};
 }
 const ago=d=>{const days=Math.round((new Date().setHours(0,0,0,0)-new Date(d).setHours(0,0,0,0))/864e5);
   return days<=0?'Tonight':days===1?'Last night':days<7?days+' nights ago':days<14?'Last week':new Intl.DateTimeFormat(undefined,{month:'short',day:'numeric'}).format(d);};

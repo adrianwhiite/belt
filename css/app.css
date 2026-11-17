@@ -555,3 +555,16 @@ input[type=range]{width:100%;accent-color:var(--song);height:28px}
 #mine .empty{border-top-color:rgba(29,22,49,.18)}
 @keyframes aurora{0%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(3%,2%,0) scale(1.05)}100%{transform:translate3d(-3%,-2%,0) scale(1.02)}}
 @media (prefers-reduced-motion: reduce){.beams i,#mine::before{animation:none}}
+
+/* Profile sections: clear breathing room and a header for each part */
+#mine .who{margin-bottom:6px}
+#mine .voice{margin-top:22px}
+#mine .stats{margin:20px 0 32px}
+#mine .set{padding-top:2px}
+#mine .set h3{font-size:22px;font-weight:800;letter-spacing:-.03em;margin-bottom:12px}
+.voice .v-sub{margin-top:8px}
+.v-more{display:inline-flex;align-items:center;gap:6px;margin-top:12px;min-height:40px;padding:0 14px 0 16px;border-radius:99px;font-size:15px;font-weight:800;color:var(--ink);background:var(--mint)}
+.v-more svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;transition:transform .25s ease}
+.v-more[aria-expanded=true] svg{transform:rotate(180deg)}
+#voiceMore{margin-top:6px}
+#voiceMore .v-notes{font-size:14px;font-weight:600;margin-top:2px;text-align:center}
