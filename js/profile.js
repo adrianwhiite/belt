@@ -121,5 +121,5 @@ export function voiceTraits(rows,n=20){
 export const builtInIds=()=>SONGS.map(s=>s.id);
 export async function checkPins(){
   const rows=await loadPerformances(500),state=pinState(rows,builtInIds());
-  return {state,...newPins(state,rows.filter(r=>r.cover>=.3).length)};
+  return {state,rows,...newPins(state,rows.filter(r=>r.cover>=.3).length)};
 }

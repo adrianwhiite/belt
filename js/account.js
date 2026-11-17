@@ -143,7 +143,30 @@ async function paintPins(){
   $('pinGrid').innerHTML=show.map((p,i)=>`<button class="pinb${p.earned?'':' off'}" data-i="${i}" aria-label="${esc(p.name)}, ${p.earned?TIER[p.tier]+' pin, earned':'locked, '+p.have+' of '+p.need}" style="--r:${((i*37)%11)-5}deg">${pinSVG(p,{locked:!p.earned,size:56})}</button>`).join('');
   $('pinAll').hidden=st.length<=10;$('pinAll').textContent=pinsOpen?'Show fewer':`See all ${st.length} pins`;$('pinAll').setAttribute('aria-expanded',String(pinsOpen));
   if(r.fresh.length)celebrate(r.fresh);
+  paintLevel(r.state,r.rows);
+  // the three rarest pins you've earned go on display on your card
+  const rank={l:0,r:1,c:2},best=r.state.filter(p=>p.earned).sort((a,b)=>rank[a.tier]-rank[b.tier]).slice(0,3);
+  $('showcase').hidden=!best.length;
+  $('showcasePins').innerHTML=best.map(p=>`<button data-id="${p.id}" aria-label="${esc(p.name)}, ${TIER[p.tier]} pin">${pinSVG(p,{size:42})}</button>`).join('');
 }
+// Your level: every song, every night out and every pin moves you up the bill.
+const LEVELS=[[0,'Bedroom singer'],[60,'Shower star'],[150,'Open mic regular'],[300,'Bar band'],[500,'Opening act'],[800,'Headliner'],[1200,'Arena act'],[1800,'Stadium legend'],[2600,'Hall of famer']];
+function paintLevel(state,rows){
+  const r=rows.filter(x=>x.cover>=.3),days=new Set(r.map(x=>new Date(x.created_at).toLocaleDateString('en-CA'))).size;
+  const xp=r.length*10+days*20+state.filter(p=>p.earned).reduce((a,p)=>a+({c:15,r:40,l:100}[p.tier]),0);
+  let i=0;while(i<LEVELS.length-1&&xp>=LEVELS[i+1][0])i++;
+  const [lo,name]=LEVELS[i],hi=LEVELS[i+1]?LEVELS[i+1][0]:null,pct=hi?Math.round((xp-lo)/(hi-lo)*100):100;
+  $('lvlName').textContent=`Level ${i+1} · ${name}`;
+  $('lvlXp').textContent=hi?`${xp-lo} of ${hi-lo} to ${LEVELS[i+1][1]}`:`${xp} points`;
+  $('lvlBar').setAttribute('aria-valuenow',String(pct));requestAnimationFrame(()=>{$('lvlFill').style.width=pct+'%';});
+}
+$('showcasePins').onclick=e=>{const b=e.target.closest('button');if(b)celebrate([pinCache.find(p=>p.id===b.dataset.id)],{view:true});};
+// Voice, Pins and Shows share one panel; the tab you left open stays open.
+const TABS={Voice:'voiceCard',Pins:'panelPins',Shows:'panelShows'};
+function pickTab(name){for(const [t,id] of Object.entries(TABS)){const on=t===name;$('tab'+t).setAttribute('aria-selected',String(on));$('tab'+t).tabIndex=on?0:-1;$(id).hidden=!on;}setPref('meTab',name);}
+for(const t of Object.keys(TABS))$('tab'+t).onclick=()=>pickTab(t);
+document.querySelector('.ptabs').addEventListener('keydown',e=>{if(!/Arrow(Left|Right)/.test(e.key))return;const k=Object.keys(TABS),i=k.findIndex(t=>$('tab'+t).getAttribute('aria-selected')==='true'),n=k[(i+(e.key==='ArrowRight'?1:k.length-1))%k.length];pickTab(n);$('tab'+n).focus();});
+pickTab(TABS[pref('meTab','Voice')]?pref('meTab','Voice'):'Voice');
 $('pinGrid').onclick=e=>{const b=e.target.closest('.pinb');if(b)celebrate([pinCache[+b.dataset.i]],{view:true});};
 $('pinAll').onclick=()=>{pinsOpen=!pinsOpen;paintPins();};
 export async function openMine(){

@@ -26,7 +26,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/app.css?v=29bf1822eb">
+<link rel="stylesheet" href="/css/app.css?v=e0e5c15cb9">
 </head>
 <body>
 
@@ -210,18 +210,28 @@
 
 <section id="mine" class="screen" aria-label="Your profile">
   <div class="prof-top"><button id="mineBack">&#8592; Songs</button><button id="editMe">Edit</button></div>
-  <div class="who"><span class="av"><svg class="belter" id="meBig" data-me="1" data-mic="none" viewBox="0 -4 120 140"></svg></span><div><b id="meName">You</b><small id="meSub"></small></div></div>
-  <div class="stats"><div><b id="stNights">0</b><span>Nights sung</span></div><div><b id="stSongs">0</b><span>Songs sung</span></div><div><b id="stBest">–</b><span>Best score</span></div></div>
-  <hr class="me-rule">
-  <div class="voice" id="voiceCard" aria-live="polite"></div>
-  <div class="pins-sec"><div class="pins-head"><h3>Your pins</h3><span id="pinCount"></span></div>
+  <div class="hero">
+    <div class="hero-banner" aria-hidden="true"></div>
+    <div class="who"><span class="av"><svg class="belter" id="meBig" data-me="1" data-mic="none" viewBox="0 -4 120 140"></svg></span><div><b id="meName">You</b><small id="meSub"></small></div></div>
+    <div class="lvl" id="lvl"><div class="lvl-row"><b id="lvlName">Level 1</b><span id="lvlXp"></span></div>
+      <div class="lvl-bar" role="progressbar" aria-labelledby="lvlName" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="lvlBar"><i id="lvlFill"></i></div></div>
+    <div class="stats"><div><b id="stNights">0</b><span>Nights sung</span></div><div><b id="stSongs">0</b><span>Songs sung</span></div><div><b id="stBest">–</b><span>Best score</span></div></div>
+    <div class="showcase" id="showcase" hidden><span>On display</span><div id="showcasePins"></div></div>
+  </div>
+  <div class="ptabs" role="tablist" aria-label="Your profile">
+    <button role="tab" id="tabVoice" aria-controls="voiceCard" aria-selected="true">Voice</button>
+    <button role="tab" id="tabPins" aria-controls="panelPins" aria-selected="false">Pins</button>
+    <button role="tab" id="tabShows" aria-controls="panelShows" aria-selected="false">Shows</button>
+  </div>
+  <div class="voice panel" id="voiceCard" role="tabpanel" aria-labelledby="tabVoice" aria-live="polite"></div>
+  <div class="panel" id="panelPins" role="tabpanel" aria-labelledby="tabPins" hidden>
+    <div class="panel-head"><h3>Your pins</h3><span id="pinCount"></span></div>
     <div class="jacket"><div class="pin-grid" id="pinGrid"></div></div>
     <button class="pin-more" id="pinAll" aria-expanded="false" hidden>See all pins</button></div>
-  <div class="set"><h3>Past shows</h3><ul class="takes" id="takes"></ul></div>
-  <div class="prof-foot">
-    <button class="btn ink" id="shareSet">Share my setlist</button>
-    <button class="text-btn" id="signOut">Sign out</button>
-  </div>
+  <div class="panel" id="panelShows" role="tabpanel" aria-labelledby="tabShows" hidden>
+    <div class="panel-head"><h3>Past shows</h3></div><ul class="takes" id="takes"></ul>
+    <button class="btn paper" id="shareSet">Share my setlist</button></div>
+  <div class="prof-foot"><button class="text-btn" id="signOut">Sign out</button></div>
 </section>
 
 <div class="sheet" id="authSheet" role="dialog" aria-modal="true" aria-labelledby="authTitle">
@@ -283,7 +293,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.1"></script>
 <script type="importmap">{
  "imports": {
-  "/js/account.js": "/js/account.js?v=6d596c625f",
+  "/js/account.js": "/js/account.js?v=46022e1d59",
   "/js/ai.js": "/js/ai.js?v=77212293d0",
   "/js/audio.js": "/js/audio.js?v=bdc5727312",
   "/js/badges.js": "/js/badges.js?v=bcfeba03fc",
@@ -294,7 +304,7 @@
   "/js/own.js": "/js/own.js?v=e69929ea21",
   "/js/party.js": "/js/party.js?v=82b36f7deb",
   "/js/picker.js": "/js/picker.js?v=42b0432ba7",
-  "/js/profile.js": "/js/profile.js?v=ac3aaab990",
+  "/js/profile.js": "/js/profile.js?v=25c22372bb",
   "/js/results.js": "/js/results.js?v=d44371062d",
   "/js/songs.js": "/js/songs.js?v=20c4a05d81",
   "/js/stage.js": "/js/stage.js?v=d1ae575851",
